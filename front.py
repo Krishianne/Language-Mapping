@@ -8,7 +8,7 @@ def search_loc():
 
 cordi_map = tk.Tk()
 cordi_map.geometry("1500x800")
-cordi_map.title("Cordillera Region Map Tracker")
+cordi_map.title("CordiMap")
 
 main = tk.Frame(cordi_map)
 main.pack(fill="both", expand=True)
