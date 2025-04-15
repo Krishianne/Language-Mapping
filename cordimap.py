@@ -42,7 +42,7 @@ class CordiMap(QMainWindow):
     
 
     def header_panel(self):
-    # --- Province Panel ---
+        # --- Province Panel ---
         self.province_panel = QWidget(self)
         self.province_panel.setGeometry(950, 50, 240, 40)
         self.province_panel.setStyleSheet("background-color: #f2efe9; border-radius: 8px;")
@@ -106,8 +106,27 @@ class CordiMap(QMainWindow):
     def on_province_selected(self, index):
         if index == 0:
             self.municipalities.setEnabled(False)
+            self.municipalities.setCurrentIndex(0)
+            if hasattr(self, 'dynamic_scroll_container') and self.dynamic_scroll_container.isVisible():
+                self.dynamic_scroll_container.hide()
+            if hasattr(self, 'search_scroll_container') and self.search_scroll_container.isVisible():
+                self.search_scroll_container.hide()
+            if hasattr(self, 'province_scroll_container') and self.province_scroll_container.isVisible():
+                self.province_scroll_container.hide()
+            if hasattr(self, 'scroll_container'):
+                self.scroll_container.show()
+
         else:
             self.municipalities.setEnabled(True)
+            province = self.provinces.currentText()
+            if hasattr(self, 'scroll_container') and self.scroll_container.isVisible():
+                self.scroll_container.hide()
+            if hasattr(self, 'search_scroll_container') and self.search_scroll_container.isVisible():
+                self.search_scroll_container.hide()
+            if hasattr(self, 'dynamic_scroll_container') and self.dynamic_scroll_container.isVisible():
+                self.dynamic_scroll_container.hide()
+
+            self.create_province_info_panel(province)
 
     # Display selected province
     def selected_province_municipality(self, index):
@@ -115,10 +134,88 @@ class CordiMap(QMainWindow):
             province = self.provinces.currentText()
             municipality = self.municipalities.currentText()
             print(f"Province: {province}, Municipality: {municipality}")
-            self.scroll_container.hide()
-
+            if hasattr(self, 'scroll_container') and self.scroll_container.isVisible():
+                self.scroll_container.hide()
+            if hasattr(self, 'search_scroll_container') and self.search_scroll_container.isVisible():
+                self.search_scroll_container.hide()
+            if hasattr(self, 'province_scroll_container') and self.province_scroll_container.isVisible():
+                self.province_scroll_container.hide()
             self.create_dynamic_info_panel(province, municipality)
 
+    # Provinces Panel
+    def create_province_info_panel(self, province):
+        if hasattr(self, 'province_scroll_container'):
+            self.province_scroll_container.deleteLater()
+
+        self.province_scroll_container = QScrollArea(self)
+        self.province_scroll_container.setGeometry(950, 150, 490, 600)
+        self.province_scroll_container.setWidgetResizable(True)
+        self.province_scroll_container.setStyleSheet("""
+            border: none;
+            border-radius: 8px;
+            background-color: #f2efe9;
+        """)
+
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(5)
+
+        # Location Label
+        self.province_location_label = QLabel(f"Location: {province}", self.info_panel)
+        self.province_location_label.setStyleSheet("font-size: 16px; color: #34495e;")
+        layout.addWidget(self.province_location_label)
+
+        # Separator
+        separator_line = QFrame(self.info_panel)
+        separator_line.setFrameShape(QFrame.HLine)
+        separator_line.setFrameShadow(QFrame.Sunken)
+        separator_line.setStyleSheet("background-color: #000; margin-top: 2px; margin-bottom: 2px;")
+        separator_line.setFixedHeight(1)
+        layout.addWidget(separator_line)
+
+        title = QLabel(f"{province} Information")
+        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(title)
+
+        description = QLabel(f"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ac scelerisque ex. Morbi luctus laoreet lacus ut congue. Aenean iaculis sagittis tellus viverra dignissim. Donec pellentesque lacinia vestibulum. Quisque id suscipit enim. Praesent nec nisl felis. Fusce rhoncus et risus non molestie. ")
+        description.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        provinces = QLabel(f"Languages/Dialect Spoken")
+        provinces.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(provinces)
+
+        provinces_LorD_spoken = QLabel(f"""
+            Lorem ipsum dolor sit amet
+            Lorem ipsum dolor sit amet
+            Lorem ipsum dolor sit amet
+            """)
+        provinces_LorD_spoken.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        provinces_LorD_spoken.setWordWrap(True)
+        layout.addWidget(provinces_LorD_spoken)
+
+        provinces_common_phrases = QLabel("Common Phrases")
+        provinces_common_phrases.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(provinces_common_phrases)
+
+
+        provinces_cp = QLabel(f""""
+            Lorem ipsum dolor sit amet
+            Lorem ipsum dolor sit amet
+            Lorem ipsum dolor sit amet
+            """)
+        provinces_cp.setStyleSheet("font-size: 14px; color: #7f8c8d")
+        provinces_cp.setWordWrap(True)
+        layout.addWidget(provinces_cp)
+
+        content.setLayout(layout)
+        self.province_scroll_container.setWidget(content)
+        self.province_scroll_container.show()
+
+    # Province-Municipality Panel
+    # TODO
     def create_dynamic_info_panel(self, province, municipality):
         self.dynamic_scroll_container = QScrollArea(self)
         self.dynamic_scroll_container.setGeometry(950, 150, 490, 600)
@@ -135,11 +232,11 @@ class CordiMap(QMainWindow):
 
         dynamic_info_layout = QVBoxLayout(self.dynamic_info_panel)
         dynamic_info_layout.setContentsMargins(20, 20, 20, 20)
-        dynamic_info_layout.setSpacing(10)
+        dynamic_info_layout.setSpacing(5)
 
-        self.dynamic_title_label = QLabel(f"Information for {municipality}, {province}", self.dynamic_info_panel)
-        self.dynamic_title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #34495e;")
-        dynamic_info_layout.addWidget(self.dynamic_title_label)
+        self.dynamic_location = QLabel(f"Location: {province}-{municipality}")
+        self.dynamic_location.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e;")
+        dynamic_info_layout.addWidget(self.dynamic_location)
 
         separator_line = QFrame(self.dynamic_info_panel)
         separator_line.setFrameShape(QFrame.HLine)
@@ -147,6 +244,10 @@ class CordiMap(QMainWindow):
         separator_line.setStyleSheet("background-color: #000; margin-top: 2px; margin-bottom: 2px;")
         separator_line.setFixedHeight(1)
         dynamic_info_layout.addWidget(separator_line)
+
+        self.dynamic_title_label = QLabel(f"{municipality}, {province} Information", self.dynamic_info_panel)
+        self.dynamic_title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #34495e;")
+        dynamic_info_layout.addWidget(self.dynamic_title_label)
 
         self.dynamic_description_label = QLabel(self.get_dynamic_description(province, municipality), self.dynamic_info_panel)
         self.dynamic_description_label.setStyleSheet("font-size: 14px; color: #7f8c8d;")
@@ -181,15 +282,82 @@ class CordiMap(QMainWindow):
         }
         return descriptions.get(province, {}).get(municipality, "No information available for this selection.")
 
-
+    # Search functionality
     def search_loc(self):
         search_query = self.search_bar.text()
         if search_query:
-            print(f"Searching for: {search_query}")
             folium.Marker([45.5236, -122.6750], popup=f"Search: {search_query}").add_to(map)
             map.save(MAP_PATH)
-            
             self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
+            if hasattr(self, 'scroll_container') and self.scroll_container.isVisible():
+                self.scroll_container.hide()
+            if hasattr(self, 'dynamic_scroll_container') and self.dynamic_scroll_container.isVisible():
+                self.dynamic_scroll_container.hide()
+            self.search_scroll_panel(search_query)
+
+    # Search Panel
+    def search_scroll_panel(self, query):
+        self.search_scroll_container = QScrollArea(self)
+        self.search_scroll_container.setGeometry(950, 150, 490, 600)
+        self.search_scroll_container.setWidgetResizable(True)
+        self.search_scroll_container.setStyleSheet("""
+            border: none;
+            border-radius: 8px;
+            background-color: #f2efe9;
+        """)
+
+        # Container widget inside scroll
+        search_panel = QWidget()
+        search_panel.setStyleSheet("background-color: #f2efe9; border-radius: 8px;")
+        self.search_scroll_container.setWidget(search_panel)
+
+        # Layout for the search panel
+        search_layout = QVBoxLayout(search_panel)
+        search_layout.setContentsMargins(20, 20, 20, 20)
+        search_layout.setSpacing(2)
+        search_location = QLabel(f"Location: ?")
+        search_location.setStyleSheet("font-size: 16px; color: #34495e;")
+        search_layout.addWidget(search_location)
+
+        # Separator
+        separator_line = QFrame(search_panel)
+        separator_line.setFrameShape(QFrame.HLine)
+        separator_line.setFrameShadow(QFrame.Sunken)
+        separator_line.setStyleSheet("background-color: #000;")
+        separator_line.setFixedHeight(1)
+        search_layout.addWidget(separator_line)
+
+        # Searched word
+        searched_word = QLabel(f"{query}", search_panel)
+        searched_word.setStyleSheet("font-size: 20px; font-weight: bold; color: #34495e;")
+        searched_word.setAlignment(Qt.AlignRight)
+        search_layout.addWidget(searched_word)
+
+        # Dynamic description (you can change logic as needed)
+        search_description = QLabel(f"Showing results for '{query}'.", search_panel)
+        search_description.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        search_description.setWordWrap(True)
+        search_layout.addWidget(search_description)
+
+        search_similar_places = QLabel(f"Places with similar Language/Dialect")
+        search_similar_places.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e;")
+        search_layout.addWidget(search_similar_places)
+
+        search_places = QLabel(f"""
+            Lorem ipsum dolor sit amet
+            Lorem ipsum dolor sit amet
+            Lorem ipsum dolor sit amet
+        """)
+        search_places.setStyleSheet("font-size: 16px; color: #34495e;")
+        search_layout.addWidget(search_places)
+
+        common_phrases_translation = QLabel("Common Phrases Translation")
+        common_phrases_translation.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e;")
+        search_layout.addWidget(common_phrases_translation)
+
+        # Apply layout and show the panel
+        search_panel.setLayout(search_layout)
+        self.search_scroll_container.show()        
 
     def show_information_panel(self):
      # Information Panel
@@ -227,21 +395,11 @@ class CordiMap(QMainWindow):
         info_layout.addWidget(self.main_category)
 
         # Main Category
-        scroll_area = QScrollArea(self.info_panel)
-        scroll_area.setFixedHeight(150)
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("border: none;")
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_category_description = QLabel("""Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque venenatis auctor ultrices. Nullam eget purus dignissim, commodo metus a, dictum mi. Pellentesque eleifend nulla velit, a viverra neque tincidunt at. Integer ac lobortis est, non rhoncus nunc. Cras nec finibus nisl. Etiam in vulputate elit. Aliquam erat volutpat. Vivamus nec cursus sem.Curabitur dictum vel orci sit amet auctor. Vivamus sapien neque, efficitur nec ante vel, interdum rhoncus felis. Aliquam cursus finibus ante, eu consectetur neque iaculis id. Proin auctor facilisis dolor a efficitur. Proin in leo ex. Suspendisse euismod metus ultricies nisl lobortis, non fringilla sapien mattis. Integer faucibus viverra dui. Vestibulum quis ultricies turpis. Maecenas sed sem lectus. Phasellus fringilla fermentum purus, ac interdum ipsum bibendum dignissim. Vestibulum imperdiet purus eros, posuere mollis magna feugiat id. Suspendisse at nisi vel erat semper rhoncus in sit amet neque. Aliquam vel lorem vitae felis semper pretium. Morbi venenatis fringilla varius. Pellentesque mattis, sem eu condimentum dapibus, enim odio lacinia enim, bibendum pharetra velit mi non neque.Morbi hendrerit, massa nec pretium pulvinar, enim diam sollicitudin risus, accumsan tincidunt dui leo pretium diam. Sed cursus libero sit amet neque consectetur dictum. Donec hendrerit ipsum id enim faucibus, at iaculis ipsum commodo. Donec et consectetur neque. Integer rhoncus orci justo, ac ornare urna aliquam in. Donec enim lacus, tristique ut nisl ac, varius tincidunt diam. Donec a dolor nec augue vehicula auctor.Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos.Nunc vel imperdiet purus, eu auctor nisi. Nulla non odio vel quam cursus molestie. Sed ipsum nunc, suscipit ac lorem id, consequat elementum nunc. Morbi ut pharetra nunc, posueresuscipit elit. Vivamus eget sollicitudin felis, vel dictum velit. Nullam quis leo id elit mattis varius. Vestibulum ut justo aliquam, pharetra nibh vitae, venenatis urna. Aeneannec bibendum nibh.Vivamus turpis nisi, suscipit sit amet nulla eget, egestas auctor mi. Morbi convallis eleifend sagittis. Aenean dapibus cursus urna, id tincidunt lorem maximusat. Curabitur tempus metus id massa auctor rutrum. Etiam auctor sit amet lacus eget congue. Suspendisse potenti. Nulla odio mi, dictum eu gravida hendrerit, porta a diam. Craseu neque dictum, elementum metus a, ultricies orci. Morbi condimentum dictum enim eget laoreet. Proin vitae ante dictum, cursus lacus a, hendrerit augue. Praesent nec semper tortor. Vestibulum sodales odio et felis feugiat pulvinar.""", scroll_content)
+        self.main_category_description = QLabel("""Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos. Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.""", self.info_panel)
         self.main_category_description.setStyleSheet("font-size: 14px; color: #7f8c8d;")
         self.main_category_description.setWordWrap(True)
         self.main_category_description.setAlignment(Qt.AlignTop)
-        scroll_layout.addWidget(self.main_category_description)
-        scroll_content.setLayout(scroll_layout)
-        scroll_area.setWidget(scroll_content)
-        info_layout.addWidget(scroll_area)
+        info_layout.addWidget(self.main_category_description)
 
         # About
         self.about_label = QLabel("About:", self.info_panel)
