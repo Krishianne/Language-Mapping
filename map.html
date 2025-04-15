@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_c581c168e6f7159c73331293f73c97fb {
+                #map_675cb80d14d4d23183020de5c082b2a2 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,14 +39,14 @@
 <body>
     
     
-            <div class="folium-map" id="map_c581c168e6f7159c73331293f73c97fb" ></div>
+            <div class="folium-map" id="map_675cb80d14d4d23183020de5c082b2a2" ></div>
         
 </body>
 <script>
     
     
-            var map_c581c168e6f7159c73331293f73c97fb = L.map(
-                "map_c581c168e6f7159c73331293f73c97fb",
+            var map_675cb80d14d4d23183020de5c082b2a2 = L.map(
+                "map_675cb80d14d4d23183020de5c082b2a2",
                 {
                     center: [16.9083, 122.3941],
                     crs: L.CRS.EPSG3857,
@@ -67,7 +67,7 @@
 
         
     
-            var tile_layer_ee6006b448f512d8831f95a1a17ec8f8 = L.tileLayer(
+            var tile_layer_ccb705427e704f47b78b65195a119322 = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -84,7 +84,34 @@
             );
         
     
-            tile_layer_ee6006b448f512d8831f95a1a17ec8f8.addTo(map_c581c168e6f7159c73331293f73c97fb);
+            tile_layer_ccb705427e704f47b78b65195a119322.addTo(map_675cb80d14d4d23183020de5c082b2a2);
         
+    
+            tile_layer_ccb705427e704f47b78b65195a119322.addTo(map_675cb80d14d4d23183020de5c082b2a2);
+        
+    
+            var marker_c8b5d619792ab8a8fd6dc1ef3c24f1e6 = L.marker(
+                [45.5236, -122.675],
+                {
+}
+            ).addTo(map_675cb80d14d4d23183020de5c082b2a2);
+        
+    
+        var popup_dd27fee325d0c0389b4ad2e640e1456b = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_d6e366386d999c50cf82e80d9a25b5f5 = $(`<div id="html_d6e366386d999c50cf82e80d9a25b5f5" style="width: 100.0%; height: 100.0%;">Search: carl</div>`)[0];
+                popup_dd27fee325d0c0389b4ad2e640e1456b.setContent(html_d6e366386d999c50cf82e80d9a25b5f5);
+            
+        
+
+        marker_c8b5d619792ab8a8fd6dc1ef3c24f1e6.bindPopup(popup_dd27fee325d0c0389b4ad2e640e1456b)
+        ;
+
+        
+    
 </script>
 </html>
