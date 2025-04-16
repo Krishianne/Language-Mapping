@@ -18,6 +18,12 @@ map.set_position(16.9083, 122.3941)
 map.set_zoom(8)
 map.pack(fill="both", expand=True)
 
+center_marker = tk.Canvas(map.canvas, width=10, height=10, bg="blue", highlightthickness=0)
+center_marker.place(relx=0.5, rely=0.5, anchor="center")
+center_marker.create_line(0, 5, 10, 5, fill="red", width=2)  
+center_marker.create_line(5, 0, 5, 10, fill="red", width=2)  
+
+
 search_tf = tk.Frame(main, bg="white", width=500, height=50)
 search_tf.place(relx=0.65, rely=0.05, anchor="w")  
 
