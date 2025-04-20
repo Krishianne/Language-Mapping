@@ -4,16 +4,14 @@ import folium
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QFont
 
-from folium import MacroElement
-from jinja2 import Template
+# map = folium.Map(location=[16.9083, 122.3941], zoom_start=8, scrollWheelZoom=False, doubleClickZoom=False)
+# # map = folium.Map(location=[16.9983, 122.3941], zoom_start=8,control_scale=False, scrollWheelZoom=False, zoomControl=False, doubleClickZoom=False)
+# # folium.Marker([16.8691, 121.2199], popup="Click me!").add_to(map)
+# # map.options['attributionControl'] = False
 
-map = folium.Map(location=[16.9083, 122.3941], zoom_start=8, scrollWheelZoom=False, doubleClickZoom=False)
-# map = folium.Map(location=[16.9983, 122.3941], zoom_start=8,control_scale=False, scrollWheelZoom=False, zoomControl=False, doubleClickZoom=False)
-# folium.Marker([16.8691, 121.2199], popup="Click me!").add_to(map)
-# map.options['attributionControl'] = False
-map.save("map.html")
+# map.save("map.html")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MAP_PATH = os.path.join(BASE_DIR, "map.html")
@@ -55,7 +53,7 @@ class CordiMap(QMainWindow):
         #sample
         self.municipalities_mapping = {
             "Abra": ["Bangued", "Lagayan", "Pilar", "San Isidro", "Tubo"],
-            "Apayao": ["Conner", "Flora", "Kabugao", "Luna", "Santa Marcela"],
+            "Apayao": ["Calanasan", "Conner", "Flora", "Kabugao", "Luna", "Santa Marcela", "Pudtol"],
             "Benguet": ["La Trinidad", "Itogon", "Tuba", "Bokod", "Sablan"],
             "Ifugao": ["Lagawe", "Kiangan", "Lamut", "Hungduan", "Asipulo"],
             "Kalinga": ["Tabuk", "Pasil", "Lubuagan", "Rizal", "Pinukpuk"],
@@ -66,6 +64,7 @@ class CordiMap(QMainWindow):
         self.setGeometry(0, 0, 1500, 800)
         
         self.browser = QWebEngineView()
+        self.base_map()
         self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
         self.setCentralWidget(self.browser)
 
@@ -78,6 +77,11 @@ class CordiMap(QMainWindow):
         self.show_information_panel()
         self.header_panel()
     
+    def base_map(self, location=None, zoom=8):
+        if location is None:
+            location = [16.9083, 122.3941]
+        self.map = folium.Map(location=location, zoom_start=zoom, scrollWheelZoom=False, doubleClickZoom=False)
+        self.map.save(MAP_PATH) 
 
     def header_panel(self):
         # --- Province Panel ---
@@ -91,10 +95,23 @@ class CordiMap(QMainWindow):
         self.provinces = QComboBox()
         self.provinces.setFixedHeight(30)
         self.provinces.addItems(["Select Province", "Abra", "Apayao", "Benguet", "Ifugao", "Kalinga", "Mountain Province"])
-        self.provinces.setStyleSheet("""QComboBox { padding: 5px; font-family: Arial;font-size: 12px; background-color: transparent; border: none;}""")
+        self.provinces.setStyleSheet("""QComboBox { padding: 5px; font-size: 12px; background-color: transparent; border: none;}""")
+        self.provinces.setItemData(0, 0, Qt.UserRole - 1)
         self.provinces.currentIndexChanged.connect(self.on_province_selected)
 
         province_layout.addWidget(self.provinces)
+
+        self.clear_province_btn = QPushButton("clear")
+        self.clear_province_btn.setFixedSize(30, 20)
+        self.clear_province_btn.setStyleSheet("""
+            QPushButton { border: none; color: red; font-size: 12px; background-color: transparent;}
+            QPushButton::hover { color: darkred;}
+        """)
+        self.clear_province_btn.clicked.connect(self.clear_province_selection)
+        self.clear_province_btn.hide()
+
+        province_layout.addWidget(self.clear_province_btn)
+
         self.province_panel.setLayout(province_layout)
 
         # --- Municipality Panel ---
@@ -107,11 +124,24 @@ class CordiMap(QMainWindow):
 
         self.municipalities = QComboBox()
         self.municipalities.setFixedHeight(30)
-        # # self.municipalities.addItems(["Select Municipality", "Bangued", "Calanasan", "La Trinidad", "Lagawe", "Tabuk", "Bontoc", "Calanasan", "Conner", "Kabugao", "Luna", "Santa Marcela", "Flora"])
-        # self.municipalities.setStyleSheet("""QComboBox { padding: 5px; font-family: Arial;font-size: 12px; background-color: transparent; border: none;}""")
+        self.municipalities.addItems(["Select Municipality"])
+        self.municipalities.setStyleSheet("""QComboBox { padding: 5px; font-size: 12px; background-color: transparent; border: none;}""")
         self.municipalities.setEnabled(False) 
+        self.municipalities.currentIndexChanged.connect(self.on_municipality_selected)
 
         municipality_layout.addWidget(self.municipalities)
+
+        self.clear_municipality_btn = QPushButton("clear")
+        self.clear_municipality_btn.setFixedSize(30, 20)
+        self.clear_municipality_btn.setStyleSheet("""
+            QPushButton { border: none; color: red; font-size: 12px; background-color: transparent;}
+            QPushButton::hover { color: darkred;}
+        """)
+        self.clear_municipality_btn.clicked.connect(self.clear_municipality_selection)
+        self.clear_municipality_btn.hide()
+
+        municipality_layout.addWidget(self.clear_municipality_btn)
+
         self.municipality_panel.setLayout(municipality_layout)
 
         # --- Search Panel ---
@@ -124,13 +154,13 @@ class CordiMap(QMainWindow):
         search_layout.setSpacing(5)
 
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Enter A Word")
+        self.search_bar.setPlaceholderText("Type here...")
         self.search_bar.setFixedHeight(30)
-        self.search_bar.setStyleSheet("padding: 10px; font-family: Arial; font-size: 12px; border: none;")
+        self.search_bar.setStyleSheet("padding: 5px; font-size: 12px; border: none;")
 
         self.search_btn = QPushButton("SEARCH")
         self.search_btn.setFixedSize(80, 30)
-        self.search_btn.setStyleSheet("font-family: Arial; font-size: 12px; border: none;")
+        self.search_btn.setStyleSheet("font-size: 12px; border: none;")
 
         search_layout.addWidget(self.search_bar)
         search_layout.addWidget(self.search_btn)
@@ -142,10 +172,76 @@ class CordiMap(QMainWindow):
 
     # Municipality disable/enable
     def on_province_selected(self, index):
-        if index == 0:
+        selected_province = self.provinces.currentText()
+
+        self.municipalities.clear()
+
+        if selected_province == "Select Province":
+            
             self.municipalities.setEnabled(False)
+            self.clear_province_btn.hide()
+            if hasattr(self, 'province_scroll_container'):
+                self.province_scroll_container.hide() 
         else:
+            self.province_marker(selected_province)
             self.municipalities.setEnabled(True)
+            municipalities_list = self.municipalities_mapping.get(selected_province, [])
+            self.clear_province_btn.show()
+            self.municipalities.addItems(['Select Municipality'])
+            self.municipalities.setItemData(0, 0, Qt.UserRole - 1)
+            self.municipalities.addItems(municipalities_list)
+
+    def province_marker(self, province):
+        coords = self.marker_coords[province]
+        self.base_map(location=coords, zoom=8)  
+        folium.Marker(coords, popup=province).add_to(self.map)
+        self.map.save(MAP_PATH) 
+        self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
+
+    def clear_province_selection(self):
+        self.provinces.setCurrentIndex(0)
+        self.base_map()
+        self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
+        self.municipalities.clear()
+        self.municipalities.addItem("Select Municipality")
+        self.municipalities.setEnabled(False)
+        self.clear_province_btn.hide()
+
+    def on_municipality_selected(self, index):
+        selected_municipality = self.municipalities.currentText()
+        selected_province = self.provinces.currentText()
+
+        if selected_municipality != "Select Municipality":
+            self.remove_province_marker(selected_province)
+            self.muni_marker(selected_municipality)
+
+        if index == 0:  
+            self.clear_municipality_btn.hide()
+        else:
+            self.clear_municipality_btn.show()
+
+    def remove_province_marker(self, province):
+        self.base_map(location=self.marker_coords[province], zoom=8) 
+        # coords = self.marker_coords[province]
+        # folium.Marker(coords, popup=province).add_to(self.map)
+        # self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
+
+    def muni_marker(self, municipality):
+        coords = self.muni_coords.get(municipality)
+        if coords:
+            self.base_map(location=coords, zoom=10)
+            folium.Marker(coords, popup=municipality).add_to(self.map)
+            self.map.save(MAP_PATH)
+            self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
+
+    def clear_municipality_selection(self):
+        self.municipalities.setCurrentIndex(0)
+        self.base_map()
+        self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
+        self.clear_municipality_btn.hide()
+
+        if hasattr(self, 'dynamic_scroll_container'):
+            self.dynamic_scroll_container.hide()
 
     # Display selected province
     def selected_province_municipality(self, index):
@@ -169,20 +265,15 @@ class CordiMap(QMainWindow):
         self.province_scroll_container = QScrollArea(self)
         self.province_scroll_container.setGeometry(950, 150, 490, 600)
         self.province_scroll_container.setWidgetResizable(True)
-        self.province_scroll_container.setStyleSheet("""
-            border: none;
-            border-radius: 8px;
-            background-color: #f2efe9;
-        """)
+        self.province_scroll_container.setStyleSheet("border: none; border-radius: 8px; background-color: #f2efe9;")
 
         content = QWidget()
         layout = QVBoxLayout(content)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(5)
 
         # Location Label
         self.province_location_label = QLabel(f"Location: {province}", self.info_panel)
-        self.province_location_label.setStyleSheet("font-size: 16px; color: #34495e;")
+        self.province_location_label.setStyleSheet("font-size: 13px; color: #34495e;")
         layout.addWidget(self.province_location_label)
 
         # Separator
@@ -190,7 +281,6 @@ class CordiMap(QMainWindow):
         separator_line.setFrameShape(QFrame.HLine)
         separator_line.setFrameShadow(QFrame.Sunken)
         separator_line.setStyleSheet("background-color: #000; margin-top: 2px; margin-bottom: 2px;")
-        separator_line.setFixedHeight(1)
         layout.addWidget(separator_line)
 
         title = QLabel(f"{province} Information")
@@ -198,8 +288,9 @@ class CordiMap(QMainWindow):
         layout.addWidget(title)
 
         description = QLabel(f"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ac scelerisque ex. Morbi luctus laoreet lacus ut congue. Aenean iaculis sagittis tellus viverra dignissim. Donec pellentesque lacinia vestibulum. Quisque id suscipit enim. Praesent nec nisl felis. Fusce rhoncus et risus non molestie. ")
-        description.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        description.setStyleSheet("font-size: 13px; color: #7f8c8d;")
         description.setWordWrap(True)
+        description.setAlignment(Qt.AlignJustify)
         layout.addWidget(description)
 
         provinces = QLabel(f"Languages/Dialect Spoken")
@@ -211,14 +302,13 @@ class CordiMap(QMainWindow):
             Lorem ipsum dolor sit amet
             Lorem ipsum dolor sit amet
             """)
-        provinces_LorD_spoken.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        provinces_LorD_spoken.setStyleSheet("font-size: 13px; color: #7f8c8d;")
         provinces_LorD_spoken.setWordWrap(True)
         layout.addWidget(provinces_LorD_spoken)
 
         provinces_common_phrases = QLabel("Common Phrases")
         provinces_common_phrases.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
         layout.addWidget(provinces_common_phrases)
-
 
         provinces_cp = QLabel(f""""
             Lorem ipsum dolor sit amet
@@ -254,7 +344,7 @@ class CordiMap(QMainWindow):
         dynamic_info_layout.setSpacing(5)
 
         self.dynamic_location = QLabel(f"Location: {province}-{municipality}")
-        self.dynamic_location.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e;")
+        self.dynamic_location.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e;")
         dynamic_info_layout.addWidget(self.dynamic_location)
 
         separator_line = QFrame(self.dynamic_info_panel)
@@ -269,41 +359,12 @@ class CordiMap(QMainWindow):
         dynamic_info_layout.addWidget(self.dynamic_title_label)
 
         self.dynamic_description_label = QLabel(self.get_dynamic_description(province, municipality), self.dynamic_info_panel)
-        self.dynamic_description_label.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        self.dynamic_description_label.setStyleSheet("font-size: 13px; color: #7f8c8d;")
         self.dynamic_description_label.setWordWrap(True)
         dynamic_info_layout.addWidget(self.dynamic_description_label)
 
         self.dynamic_info_panel.setLayout(dynamic_info_layout)
         self.dynamic_scroll_container.show()
-
-        # self.dynamic_scroll_container.verticalScrollBar().setStyleSheet("""
-        #     QScrollBar:vertical, QScrollBar:horizontal {
-        #         background: #f2efe9;
-        #         width: 10px;
-        #         height: 10px;
-        #         margin: 0px;
-        #         border: none;
-        #     }
-
-        #     QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
-        #         background: #b4b6c4;
-        #         min-height: 20px;
-        #         border-radius: 5px;
-        #     }
-
-        #     QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
-        #     QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
-        #         background: none;
-        #         border: none;
-        #         width: 0px;
-        #         height: 0px;
-        #     }
-
-        #     QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
-        #     QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
-        #         background: none;
-        #     }
-        # """)
 
     def get_dynamic_description(self, province, municipality):
         descriptions = {
@@ -380,7 +441,6 @@ class CordiMap(QMainWindow):
         searched_word.setAlignment(Qt.AlignRight)
         search_layout.addWidget(searched_word)
 
-        # Dynamic description (you can change logic as needed)
         search_description = QLabel(f"Showing results for '{query}'.", search_panel)
         search_description.setStyleSheet("font-size: 14px; color: #7f8c8d;")
         search_description.setWordWrap(True)
@@ -408,25 +468,28 @@ class CordiMap(QMainWindow):
 
     def show_information_panel(self):
      # Information Panel
+        if hasattr(self, 'scroll_container'):
+            self.scroll_container.deleteLater()
+    
         self.scroll_container = QScrollArea(self)
         self.scroll_container.setGeometry(950, 150, 490, 600)
         self.scroll_container.setWidgetResizable(True)
         self.scroll_container.setStyleSheet("""
-            # border: 2px solid #B4B6C4;
+            border: 2px solid #B4B6C4;
             border-radius: 10px;
             background-color: #f2efe9;
         """)
 
         self.info_panel = QWidget()
-        self.info_panel.setStyleSheet("background-color: #f2efe9; border-radius: 8px;")
+        self.info_panel.setStyleSheet("background-color: #f2efe9; border-radius: 8px; border: none;")
         self.scroll_container.setWidget(self.info_panel)
         info_layout = QVBoxLayout(self.info_panel)
         info_layout.setContentsMargins(20, 20, 20, 20)
         info_layout.setSpacing(10)
 
         # Location Label
-        self.location_category_label = QLabel("Location: Cordillera, Philippines", self.info_panel)
-        self.location_category_label.setStyleSheet("font-size: 16px; color: #34495e;")
+        self.location_category_label = QLabel("Location: 16.9083, 122.3941", self.info_panel)
+        self.location_category_label.setStyleSheet("font-size: 13px; color: #34495e;")
         info_layout.addWidget(self.location_category_label)
 
         # Separator
@@ -439,14 +502,14 @@ class CordiMap(QMainWindow):
 
         # Title
         self.main_category = QLabel("Cordillera Administrative Region", self.info_panel)
-        self.main_category.setStyleSheet("font-size: 22px; font-weight: bold; color: #2c3e50;")
+        self.main_category.setStyleSheet("font-size: 22px; font-weight: bold; color: #2c3e50;  padding-top: 10px;")
         info_layout.addWidget(self.main_category)
 
         # Main Category
         self.main_category_description = QLabel("""Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos. Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.""", self.info_panel)
-        self.main_category_description.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        self.main_category_description.setStyleSheet("font-size: 13px; color: #7f8c8d;")
         self.main_category_description.setWordWrap(True)
-        self.main_category_description.setAlignment(Qt.AlignTop)
+        self.main_category_description.setAlignment(Qt.AlignJustify)
         info_layout.addWidget(self.main_category_description)
 
         # About
@@ -454,34 +517,36 @@ class CordiMap(QMainWindow):
         self.about_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e; padding-top: 5px;")
         info_layout.addWidget(self.about_label)
         self.about_description = QLabel("The Cordillera region is home to diverse indigenous communities and unique cultural heritage sites such as the Banaue Rice Terraces.", self.info_panel)
-        self.about_description.setStyleSheet("font-size: 13px; color: #7f8c8d;")
+        self.about_description.setStyleSheet("font-size: 13px; font-family: Tahoma; color: #7f8c8d;")
         self.about_description.setWordWrap(True)
+        self.about_description.setAlignment(Qt.AlignJustify)
         info_layout.addWidget(self.about_description)
 
         # Team
         self.team_label = QLabel("Team:", self.info_panel)
-        self.team_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e;")
+        self.team_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e; padding-top: 5px;")
         info_layout.addWidget(self.team_label)
-        self.team_description = QLabel("""
-            Alcaparras,
-            Bromeo,
-            Cagulada,
-            Calsiman,
-            Cendana,
-            Galvan,
-            Munar,
-            """, self.info_panel)
+        self.team_description = QLabel(
+            'Alcaparras, Krishianne Mae\n'
+            'Bromeo, Emmanuel Paolo\n'
+            'Cagulada, Sheryn Ann\n'
+            'Calsiman, Carl Allan\n'
+            'Cendana, Juliana April\n'
+            'Galvan, Marc Jansen\n'
+            'Munar, Dulther Carlo',
+            self.info_panel
+        )
         self.team_description.setStyleSheet("font-size: 13px; color: #7f8c8d;")
         self.team_description.setWordWrap(True)
         info_layout.addWidget(self.team_description)
 
         # References
         self.references_label = QLabel("References:", self.info_panel)
-        self.references_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e;")
+        self.references_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e; padding-top: 5px;")
         info_layout.addWidget(self.references_label)
-        self.references_description = QLabel("""
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque venenatis auctor ultrices.
-            """, self.info_panel)
+        self.references_description = QLabel(
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque venenatis auctor ultrices.', 
+            self.info_panel)
         self.references_description.setStyleSheet("font-size: 13px; color: #7f8c8d;")
         self.references_description.setWordWrap(True)
         info_layout.addWidget(self.references_description)
@@ -491,6 +556,8 @@ class CordiMap(QMainWindow):
         self.scroll_container.show()
 
 cordimap = QApplication(sys.argv)
+font = QFont("Tahoma")
+cordimap.setFont(font)
 window = CordiMap()
 window.show()
 
