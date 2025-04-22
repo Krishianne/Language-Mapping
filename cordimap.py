@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtGui import QPixmap, QFont
+from db import connect
 
 # map = folium.Map(location=[16.9083, 122.3941], zoom_start=8, scrollWheelZoom=False, doubleClickZoom=False)
 # # map = folium.Map(location=[16.9983, 122.3941], zoom_start=8,control_scale=False, scrollWheelZoom=False, zoomControl=False, doubleClickZoom=False)
@@ -21,6 +22,9 @@ class CordiMap(QMainWindow):
 
     def __init__(self):
         super().__init__()
+
+        self.conn = connect()  
+        self.cur = self.conn.cursor()
 
         self.province_coords = {
             "Abra": [17.3289, 122.2739],
@@ -221,7 +225,8 @@ class CordiMap(QMainWindow):
             self.clear_municipality_btn.show()
 
     def remove_province_marker(self, province):
-        self.base_map(location=self.marker_coords[province], zoom=8) 
+        if province in self.marker_coords:
+            self.base_map(location=self.marker_coords[province], zoom=8) 
         # coords = self.marker_coords[province]
         # folium.Marker(coords, popup=province).add_to(self.map)
         # self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
@@ -272,7 +277,8 @@ class CordiMap(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # Location Label
-        self.province_location_label = QLabel(f"Location: {province}", self.info_panel)
+        coords = self.get_location(province)
+        self.province_location_label = QLabel(f"Location: {province} ({coords[0]}, {coords[1]})", self.info_panel)
         self.province_location_label.setStyleSheet("font-size: 13px; color: #34495e;")
         layout.addWidget(self.province_location_label)
 
@@ -343,7 +349,13 @@ class CordiMap(QMainWindow):
         dynamic_info_layout.setContentsMargins(20, 20, 20, 20)
         dynamic_info_layout.setSpacing(5)
 
-        self.dynamic_location = QLabel(f"Location: {province}-{municipality}")
+        coords = self.get_location(province)
+        location_text = f"{province} ({coords[0]}, {coords[1]})"
+
+        if municipality:  # Only add dash if municipality is provided
+            location_text = f"{province} - {municipality} ({coords[0]}, {coords[1]})"
+
+        self.dynamic_location = QLabel(f"Location: {location_text}", self.dynamic_info_panel)
         self.dynamic_location.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e;")
         dynamic_info_layout.addWidget(self.dynamic_location)
 
@@ -354,9 +366,24 @@ class CordiMap(QMainWindow):
         separator_line.setFixedHeight(1)
         dynamic_info_layout.addWidget(separator_line)
 
-        self.dynamic_title_label = QLabel(f"{municipality}, {province} Information", self.dynamic_info_panel)
-        self.dynamic_title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #34495e;")
-        dynamic_info_layout.addWidget(self.dynamic_title_label)
+        # Fetch dynamic info from the database
+        dynamic_info = self.get_dynamic_info(province, municipality)
+
+        # Format location string
+        if municipality:
+            location_text = f"{municipality}, {province}"
+        else:
+            location_text = f"{province}"
+
+        # Combine title and info into one QLabel
+        combined_text = f"<b style='font-size:16pt;'>{location_text} Information</b><br><span style='font-size:11pt; color:#7f8c8d;'>{dynamic_info}</span>"
+
+        # Set the combined QLabel
+        self.dynamic_info_label = QLabel(combined_text, self.dynamic_info_panel)
+        self.dynamic_info_label.setStyleSheet("font-size: 13px; color: #34495e;")
+        self.dynamic_info_label.setWordWrap(True)
+        self.dynamic_info_label.setTextFormat(Qt.RichText)  
+        dynamic_info_layout.addWidget(self.dynamic_info_label)
 
         self.dynamic_description_label = QLabel(self.get_dynamic_description(province, municipality), self.dynamic_info_panel)
         self.dynamic_description_label.setStyleSheet("font-size: 13px; color: #7f8c8d;")
@@ -367,41 +394,48 @@ class CordiMap(QMainWindow):
         self.dynamic_scroll_container.show()
 
     def get_dynamic_description(self, province, municipality):
-        descriptions = {
-            "Abra": {
-                "Bangued": "Bangued is the capital municipality of Abra, known for its rich cultural heritage.",
-                "Calanasan": "Calanasan is a municipality in Abra, characterized by its mountain landscapes.",
-            },
-            "Apayao": {
-                "Conner": "Conner is a town in Apayao, offering stunning views of the Apayao river.",
-            },
-            "Benguet": {
-                "La Trinidad": "La Trinidad is the capital of Benguet, famous for its scenic strawberry farms.",
-            },
-            "Ifugao": {
-                "Lagawe": "Lagawe is the capital municipality of Ifugao, known for the Banaue Rice Terraces.",
-            },
-            "Kalinga": {
-                "Tabuk": "Tabuk is the capital of Kalinga, a province known for its vibrant indigenous culture.",
-            },
-            "Mountain Province": {
-                "Bontoc": "Bontoc is the capital of Mountain Province, with historical significance and beautiful views.",
-            }
-        }
-        return descriptions.get(province, {}).get(municipality, "No information available for this selection.")
+        """Get description from the database."""
+        result = self.db.get_province_info(province)
+        if result:
+            return result[0]
+        return f"No information available for {municipality}, {province}"
 
     # Search functionality
     def search_loc(self):
-        search_query = self.search_bar.text()
-        if search_query:
-            folium.Marker([45.5236, -122.6750], popup=f"Search: {search_query}").add_to(map)
-            map.save(MAP_PATH)
+        try:
+            search_query = self.search_bar.text().strip()
+            if not search_query:
+                print("Search query is empty.")  # Optional: Show a warning
+                return  # Exit if no input
+
+            # Ensure the map exists (create if missing)
+            if not hasattr(self, 'map') or not self.map:
+                self.map = folium.Map(location=[12.8797, 121.7740], zoom_start=6)  # Default: Philippines
+
+            # Add a marker for the search query (replace with real coordinates)
+            folium.Marker(
+                location=[17.6, 121.7],  # Example: Apayao coordinates
+                popup=f"Search: {search_query}"
+            ).add_to(self.map)
+
+            # Save and display the map
+            self.map.save(MAP_PATH)
             self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
-            if hasattr(self, 'scroll_container') and self.scroll_container.isVisible():
-                self.scroll_container.hide()
-            if hasattr(self, 'dynamic_scroll_container') and self.dynamic_scroll_container.isVisible():
-                self.dynamic_scroll_container.hide()
+
+            # Hide panels safely (check existence + visibility)
+            for panel_name in ["scroll_container", "dynamic_scroll_container"]:
+                if hasattr(self, panel_name):
+                    panel = getattr(self, panel_name)
+                    if panel.isVisible():
+                        panel.hide()
+
+            # Show search results
             self.search_scroll_panel(search_query)
+
+        except Exception as e:
+            print(f"Error in search_loc(): {e}")  # Log the error
+            # Optional: Show a user-friendly warning (e.g., QMessageBox)
+            QMessageBox.warning(self, "Search Error", f"Failed to process search: {e}")
 
     # Search Panel
     def search_scroll_panel(self, query):
@@ -554,6 +588,90 @@ class CordiMap(QMainWindow):
         # Set final layout
         self.info_panel.setLayout(info_layout)
         self.scroll_container.show()
+
+    def get_dynamic_description(self, province, municipalities):
+        """Get description and details from the database for municipalities in the selected province."""
+        try:
+            # SQL query to fetch municipality names, language names, and percentage values
+            query = """
+                SELECT m.municipality_name, ld.language_name, ml.percentage_value
+                FROM municipalities m
+                JOIN municipality_languages ml ON m.municipality_id = ml.municipality_id
+                JOIN languages_dialects ld ON ml.language_id = ld.language_id
+                JOIN provinces p ON m.province_id = p.province_id
+                WHERE LOWER(p.province_name) = LOWER(%s)
+                ORDER BY ml.percentage_value DESC;
+            """
+            # Execute the query with the selected province
+            self.cur.execute(query, (province,))
+            rows = self.cur.fetchall()
+
+            if rows:
+                # Create a table to display the results in a readable format
+                table = "Municipality | Language Name | Percentage\n"
+                table += "-" * 50 + "\n"
+                for row in rows:
+                    municipality, language, percentage = row
+                    table += f"{municipality} | {language} | {percentage}%\n"
+                return table
+            else:
+                return f"No information available for {province}."
+
+        except Exception as e:
+            print(f"Database error: {e}")
+            return "No information available due to an error."
+
+    def get_location(self, province):
+        """
+        Return the coordinates of the given province.
+        If not found, return default coordinates.
+        """
+        return self.province_coords.get(province, [16.9083, 122.3941])  # Default Cordillera region center
+
+    def get_dynamic_info(self, province, municipality):
+        """Fetch dynamic information for the given province and municipality."""
+        try:
+            # Query to get the province information
+            query_province = """
+                SELECT information
+                FROM provinces
+                WHERE province_name = %s
+                LIMIT 1;
+            """
+            self.cur.execute(query_province, (province,))
+            province_info = self.cur.fetchone()
+
+            # Query to get the municipality information
+            query_municipality = """
+                SELECT information
+                FROM municipalities
+                WHERE municipality_name = %s AND province_id = (
+                    SELECT province_id FROM provinces WHERE province_name = %s LIMIT 1
+                )
+                LIMIT 1;
+            """
+            self.cur.execute(query_municipality, (municipality, province))
+            municipality_info = self.cur.fetchone()
+
+            # Combine both information if available
+            info = ""
+            if province_info:
+                info += f"<b>Province Info:</b> {province_info[0]}<br>"
+            if municipality_info:
+                info += f"<b>Municipality Info:</b> {municipality_info[0]}<br>"
+
+            # Optionally, you can add more info (languages, percentages, etc.) here.
+            
+            return info or "No information available."
+
+        except Exception as e:
+            print(f"Database error: {e}")
+            return "No information available."
+
+    def close(self):
+        """Close the database connection."""
+        self.cur.close()
+        self.conn.close()
 
 cordimap = QApplication(sys.argv)
 font = QFont("Tahoma")
