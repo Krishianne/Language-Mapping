@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_75fd8b80703e3aa9992114a1cd5a3c11 {
+                #map_a43b4f554d929d9334f9a5dac598a829 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,16 +39,16 @@
 <body>
     
     
-            <div class="folium-map" id="map_75fd8b80703e3aa9992114a1cd5a3c11" ></div>
+            <div class="folium-map" id="map_a43b4f554d929d9334f9a5dac598a829" ></div>
         
 </body>
 <script>
     
     
-            var map_75fd8b80703e3aa9992114a1cd5a3c11 = L.map(
-                "map_75fd8b80703e3aa9992114a1cd5a3c11",
+            var map_a43b4f554d929d9334f9a5dac598a829 = L.map(
+                "map_a43b4f554d929d9334f9a5dac598a829",
                 {
-                    center: [17.5891, 120.7899],
+                    center: [16.9083, 122.3941],
                     crs: L.CRS.EPSG3857,
                     ...{
   "zoom": 8,
@@ -65,7 +65,7 @@
 
         
     
-            var tile_layer_80e6c123ffcdb9ab0d6350a2aee132ad = L.tileLayer(
+            var tile_layer_cc9bb01fe7e15574c03c714b691270b0 = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -82,7 +82,34 @@
             );
         
     
-            tile_layer_80e6c123ffcdb9ab0d6350a2aee132ad.addTo(map_75fd8b80703e3aa9992114a1cd5a3c11);
+            tile_layer_cc9bb01fe7e15574c03c714b691270b0.addTo(map_a43b4f554d929d9334f9a5dac598a829);
         
+    
+            tile_layer_cc9bb01fe7e15574c03c714b691270b0.addTo(map_a43b4f554d929d9334f9a5dac598a829);
+        
+    
+            var marker_a439581c02df5367bedd61a00bf407eb = L.marker(
+                [17.6, 121.7],
+                {
+}
+            ).addTo(map_a43b4f554d929d9334f9a5dac598a829);
+        
+    
+        var popup_f085da1243f9603bc99ca138da095bd1 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_d1709c1197aa5ba9fce1182e7c32bf1f = $(`<div id="html_d1709c1197aa5ba9fce1182e7c32bf1f" style="width: 100.0%; height: 100.0%;">Search: tagalog</div>`)[0];
+                popup_f085da1243f9603bc99ca138da095bd1.setContent(html_d1709c1197aa5ba9fce1182e7c32bf1f);
+            
+        
+
+        marker_a439581c02df5367bedd61a00bf407eb.bindPopup(popup_f085da1243f9603bc99ca138da095bd1)
+        ;
+
+        
+    
 </script>
 </html>

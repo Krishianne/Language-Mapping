@@ -381,10 +381,10 @@ class CordiMap(QMainWindow):
         self.dynamic_info_label.setTextFormat(Qt.RichText)  
         dynamic_info_layout.addWidget(self.dynamic_info_label)
 
-        self.dynamic_description_label = QLabel(self.get_dynamic_description(province, municipality), self.dynamic_info_panel)
-        self.dynamic_description_label.setStyleSheet("font-size: 13px; color: #7f8c8d;")
-        self.dynamic_description_label.setWordWrap(True)
-        dynamic_info_layout.addWidget(self.dynamic_description_label)
+        dynamic_description = self.get_dynamic_description(province, municipality)
+
+        # Add the table widget directly to the layout
+        dynamic_info_layout.addWidget(dynamic_description)
 
         # Only add language-related details if municipality is provided
         if municipality:
@@ -592,6 +592,9 @@ class CordiMap(QMainWindow):
 
     def get_dynamic_description(self, province, municipality=None):
         """Get description and details from the database for municipalities in the selected province."""
+        # Create a QTableWidget for displaying results
+        table_widget = QTableWidget()
+
         try:
             # If a municipality is provided, adjust the query to filter by municipality as well
             if municipality:
@@ -621,28 +624,44 @@ class CordiMap(QMainWindow):
             rows = self.cur.fetchall()
 
             if rows:
-                # If municipality is selected, show only the language name and percentage
+                # Set up the table format based on whether a municipality is selected or not
                 if municipality:
-                    table = "Language Name | Percentage\n"
-                    table += "-" * 30 + "\n"
-                    for row in rows:
+                    # For selected municipality, show only language name and percentage
+                    table_widget.setColumnCount(2)
+                    table_widget.setHorizontalHeaderLabels(['Language Name', 'Percentage'])
+                    table_widget.setRowCount(len(rows))
+                    
+                    for row_index, row in enumerate(rows):
                         language, percentage = row
-                        table += f"{language} | {percentage}%\n"
-                    return table
+                        table_widget.setItem(row_index, 0, QTableWidgetItem(language))
+                        table_widget.setItem(row_index, 1, QTableWidgetItem(f"{percentage}%"))
                 else:
-                    # If no municipality is selected, show for all municipalities in the province
-                    table = "Municipality | Language Name | Percentage\n"
-                    table += "-" * 50 + "\n"
-                    for row in rows:
-                        municipality, language, percentage = row
-                        table += f"{municipality} | {language} | {percentage}%\n"
-                    return table
+                    # For the entire province, show municipality, language name, and percentage
+                    table_widget.setColumnCount(3)
+                    table_widget.setHorizontalHeaderLabels(['Municipality', 'Language Name', 'Percentage'])
+                    table_widget.setRowCount(len(rows))
+                    
+                    for row_index, row in enumerate(rows):
+                        municipality_name, language, percentage = row
+                        table_widget.setItem(row_index, 0, QTableWidgetItem(municipality_name))
+                        table_widget.setItem(row_index, 1, QTableWidgetItem(language))
+                        table_widget.setItem(row_index, 2, QTableWidgetItem(f"{percentage}%"))
             else:
-                return f"No information available for {province}." if not municipality else f"No information available for {municipality}, {province}."
-                
+                # If no data is found, display a message
+                table_widget.setRowCount(1)
+                table_widget.setColumnCount(1)
+                table_widget.setHorizontalHeaderLabels(['No Information Available'])
+                table_widget.setItem(0, 0, QTableWidgetItem(f"No information available for {municipality or province}"))
+
         except Exception as e:
             print(f"Database error: {e}")
-            return "No information available due to an error."
+            # In case of error, show an error message
+            table_widget.setRowCount(1)
+            table_widget.setColumnCount(1)
+            table_widget.setHorizontalHeaderLabels(['Error'])
+            table_widget.setItem(0, 0, QTableWidgetItem("Error fetching data"))
+
+        return table_widget
 
     def get_location(self, province):
         """
