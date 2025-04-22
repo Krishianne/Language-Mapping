@@ -54,16 +54,6 @@ class CordiMap(QMainWindow):
             "Mountain Province": [17.1391, 121.1099]
         }
 
-        #sample
-        self.municipalities_mapping = {
-            "Abra": ["Bangued", "Lagayan", "Pilar", "San Isidro", "Tubo"],
-            "Apayao": ["Calanasan", "Conner", "Flora", "Kabugao", "Luna", "Santa Marcela", "Pudtol"],
-            "Benguet": ["La Trinidad", "Itogon", "Tuba", "Bokod", "Sablan"],
-            "Ifugao": ["Lagawe", "Kiangan", "Lamut", "Hungduan", "Asipulo"],
-            "Kalinga": ["Tabuk", "Pasil", "Lubuagan", "Rizal", "Pinukpuk"],
-            "Mountain Province": ["Bontoc", "Sabangan", "Sagada", "Tadian", "Besao"]
-        }
-
         self.setWindowTitle('CordiMap')
         self.setGeometry(0, 0, 1500, 800)
         
@@ -177,23 +167,30 @@ class CordiMap(QMainWindow):
     # Municipality disable/enable
     def on_province_selected(self, index):
         selected_province = self.provinces.currentText()
-
         self.municipalities.clear()
 
         if selected_province == "Select Province":
-            
             self.municipalities.setEnabled(False)
             self.clear_province_btn.hide()
             if hasattr(self, 'province_scroll_container'):
-                self.province_scroll_container.hide() 
+                self.province_scroll_container.hide()
         else:
-            self.province_marker(selected_province)
-            self.municipalities.setEnabled(True)
-            municipalities_list = self.municipalities_mapping.get(selected_province, [])
-            self.clear_province_btn.show()
-            self.municipalities.addItems(['Select Municipality'])
-            self.municipalities.setItemData(0, 0, Qt.UserRole - 1)
-            self.municipalities.addItems(municipalities_list)
+            self.load_municipalities(selected_province)
+            self.clear_province_btn.show()  # Make sure the clear button is visible
+            self.municipalities.setEnabled(True)  # Enable the dropdown
+            if hasattr(self, 'province_scroll_container'):
+                self.province_scroll_container.show()  # Show the scroll container
+
+
+    def load_municipalities(self, province):
+        self.province_marker(province)
+
+        municipalities = self.get_municipalities(province)
+        print(f"Municipalities for {province}: {municipalities}")  # Debugging line
+
+        self.municipalities.addItem('Select Municipality')
+        self.municipalities.setItemData(0, 0, Qt.UserRole - 1)
+        self.municipalities.addItems(municipalities)
 
     def province_marker(self, province):
         coords = self.marker_coords[province]
@@ -667,6 +664,22 @@ class CordiMap(QMainWindow):
         except Exception as e:
             print(f"Database error: {e}")
             return "No information available."
+    
+    def get_municipalities(self, province):
+        try:
+            query = """
+                SELECT municipality_name
+                FROM municipalities
+                JOIN provinces USING (province_id)
+                WHERE province_name = %s
+                ORDER BY municipality_name;
+            """
+            self.cur.execute(query, (province,))
+            rows = self.cur.fetchall()
+            return [row[0] for row in rows]
+        except Exception as e:
+            print(f"SQL error fetching municipalities: {e}")
+        return []
 
     def close(self):
         """Close the database connection."""
