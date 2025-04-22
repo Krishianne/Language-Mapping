@@ -181,7 +181,6 @@ class CordiMap(QMainWindow):
             if hasattr(self, 'province_scroll_container'):
                 self.province_scroll_container.show()  # Show the scroll container
 
-
     def load_municipalities(self, province):
         self.province_marker(province)
 
