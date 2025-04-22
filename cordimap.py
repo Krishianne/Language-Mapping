@@ -386,6 +386,11 @@ class CordiMap(QMainWindow):
         self.dynamic_description_label.setWordWrap(True)
         dynamic_info_layout.addWidget(self.dynamic_description_label)
 
+        # Only add language-related details if municipality is provided
+        if municipality:
+            self.dynamic_language_info_widget = self.get_dynamic_municipality(province, municipality)
+            dynamic_info_layout.addWidget(self.dynamic_language_info_widget)
+
         self.dynamic_info_panel.setLayout(dynamic_info_layout)
         self.dynamic_scroll_container.show()
 
@@ -585,34 +590,56 @@ class CordiMap(QMainWindow):
         self.info_panel.setLayout(info_layout)
         self.scroll_container.show()
 
-    def get_dynamic_description(self, province, municipalities):
+    def get_dynamic_description(self, province, municipality=None):
         """Get description and details from the database for municipalities in the selected province."""
         try:
-            # SQL query to fetch municipality names, language names, and percentage values
-            query = """
-                SELECT m.municipality_name, ld.language_name, ml.percentage_value
-                FROM municipalities m
-                JOIN municipality_languages ml ON m.municipality_id = ml.municipality_id
-                JOIN languages_dialects ld ON ml.language_id = ld.language_id
-                JOIN provinces p ON m.province_id = p.province_id
-                WHERE LOWER(p.province_name) = LOWER(%s)
-                ORDER BY ml.percentage_value DESC;
-            """
-            # Execute the query with the selected province
-            self.cur.execute(query, (province,))
+            # If a municipality is provided, adjust the query to filter by municipality as well
+            if municipality:
+                query = """
+                    SELECT ld.language_name, ml.percentage_value
+                    FROM municipalities m
+                    JOIN municipality_languages ml ON m.municipality_id = ml.municipality_id
+                    JOIN languages_dialects ld ON ml.language_id = ld.language_id
+                    WHERE LOWER(m.municipality_name) = LOWER(%s)
+                    AND LOWER(m.province_id) = (SELECT province_id FROM provinces WHERE LOWER(province_name) = LOWER(%s))
+                    ORDER BY ml.percentage_value DESC;
+                """
+                self.cur.execute(query, (municipality, province))
+            else:
+                # Default query to fetch language information for the entire province
+                query = """
+                    SELECT m.municipality_name, ld.language_name, ml.percentage_value
+                    FROM municipalities m
+                    JOIN municipality_languages ml ON m.municipality_id = ml.municipality_id
+                    JOIN languages_dialects ld ON ml.language_id = ld.language_id
+                    JOIN provinces p ON m.province_id = p.province_id
+                    WHERE LOWER(p.province_name) = LOWER(%s)
+                    ORDER BY ml.percentage_value DESC;
+                """
+                self.cur.execute(query, (province,))
+
             rows = self.cur.fetchall()
 
             if rows:
-                # Create a table to display the results in a readable format
-                table = "Municipality | Language Name | Percentage\n"
-                table += "-" * 50 + "\n"
-                for row in rows:
-                    municipality, language, percentage = row
-                    table += f"{municipality} | {language} | {percentage}%\n"
-                return table
+                # If municipality is selected, show only the language name and percentage
+                if municipality:
+                    table = "Language Name | Percentage\n"
+                    table += "-" * 30 + "\n"
+                    for row in rows:
+                        language, percentage = row
+                        table += f"{language} | {percentage}%\n"
+                    return table
+                else:
+                    # If no municipality is selected, show for all municipalities in the province
+                    table = "Municipality | Language Name | Percentage\n"
+                    table += "-" * 50 + "\n"
+                    for row in rows:
+                        municipality, language, percentage = row
+                        table += f"{municipality} | {language} | {percentage}%\n"
+                    return table
             else:
-                return f"No information available for {province}."
-
+                return f"No information available for {province}." if not municipality else f"No information available for {municipality}, {province}."
+                
         except Exception as e:
             print(f"Database error: {e}")
             return "No information available due to an error."
@@ -679,6 +706,56 @@ class CordiMap(QMainWindow):
         except Exception as e:
             print(f"SQL error fetching municipalities: {e}")
         return []
+    
+    def get_dynamic_municipality(self, province, municipality):
+        """Create a table widget to display the language phrases and English phrases for the selected municipality."""
+        # Create a new QTableWidget
+        table_widget = QTableWidget()
+
+        try:
+            # Query to fetch language phrases and their English equivalents for the selected municipality
+            query = """
+                SELECT ld.language_name, p.language_phrase, p.english_phrase
+                FROM phrases p
+                JOIN languages_dialects ld ON p.language_id = ld.language_id
+                JOIN municipality_languages ml ON ml.language_id = ld.language_id
+                JOIN municipalities m ON m.municipality_id = ml.municipality_id
+                WHERE LOWER(m.municipality_name) = LOWER(%s)
+                AND LOWER(m.province_id) = (SELECT province_id FROM provinces WHERE LOWER(province_name) = LOWER(%s))
+                ORDER BY ld.language_name;
+            """
+            self.cur.execute(query, (municipality, province))
+            rows = self.cur.fetchall()
+
+            if rows:
+                # Set the number of columns based on the result
+                table_widget.setColumnCount(3)  # Language Name | Language Phrase | English Phrase
+                table_widget.setHorizontalHeaderLabels(['Language Name', 'Language Phrase', 'English Phrase'])
+
+                # Set the number of rows based on the fetched data
+                table_widget.setRowCount(len(rows))
+
+                for row_index, row in enumerate(rows):
+                    language, phrase, english_phrase = row
+                    table_widget.setItem(row_index, 0, QTableWidgetItem(language))
+                    table_widget.setItem(row_index, 1, QTableWidgetItem(phrase))
+                    table_widget.setItem(row_index, 2, QTableWidgetItem(english_phrase))
+            else:
+                # If no phrases are found, show a message indicating no data
+                table_widget.setRowCount(1)
+                table_widget.setColumnCount(1)
+                table_widget.setHorizontalHeaderLabels(['No Information Available'])
+                table_widget.setItem(0, 0, QTableWidgetItem(f"No phrases found for {municipality}"))
+
+        except Exception as e:
+            print(f"Error fetching phrases: {e}")
+            # In case of error, show an error message
+            table_widget.setRowCount(1)
+            table_widget.setColumnCount(1)
+            table_widget.setHorizontalHeaderLabels(['Error'])
+            table_widget.setItem(0, 0, QTableWidgetItem("Error fetching data"))
+
+        return table_widget
 
     def close(self):
         """Close the database connection."""
