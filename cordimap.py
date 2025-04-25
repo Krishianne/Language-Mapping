@@ -212,13 +212,40 @@ class CordiMap(QMainWindow):
         self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
 
     def clear_province_selection(self):
-        self.provinces.setCurrentIndex(0)
-        self.base_map()
-        self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
-        self.municipalities.clear()
-        self.municipalities.addItem("Select Municipality")
-        self.municipalities.setEnabled(False)
-        self.clear_province_btn.hide()
+        try:
+            print("Clear button pressed")
+            
+            # Reset the province dropdown
+            self.provinces.setCurrentIndex(0)
+            print("Province dropdown reset")
+            
+            # Call the base map function to reset the map
+            self.base_map()
+            print("Base map reset")
+            
+            # Reset the browser's URL to the default map path
+            self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
+            print("Browser URL reset")
+            
+            # Clear the municipalities dropdown
+            self.municipalities.clear()
+            self.municipalities.addItem("Select Municipality")
+            self.municipalities.setEnabled(False)
+            print("Municipalities dropdown reset")
+            
+            # Hide the "Clear Province" button
+            self.clear_province_btn.hide()
+            print("Clear province button hidden")
+
+            # Optionally show the information panel (if it's hidden by default)
+            if hasattr(self, 'show_information_panel'):
+                self.show_information_panel()
+                print("Information panel shown")
+
+        except Exception as e:
+            print(f"Error in clear_province_selection(): {e}")
+            QMessageBox.warning(self, "Reset Error", f"Failed to reset province selection: {e}")
+
 
     def on_municipality_selected(self, index):
         selected_municipality = self.municipalities.currentText()
