@@ -837,7 +837,7 @@ class CordiMap(QMainWindow):
                 JOIN provinces USING (province_id)
                 WHERE province_name = %s
                 ORDER BY municipality_name;
-            """
+            """ 
             self.cur.execute(query, (province,))
             rows = self.cur.fetchall()
             return [row[0].title() for row in rows]
