@@ -477,20 +477,42 @@ class CordiMap(QMainWindow):
         search_layout.setSpacing(10)
 
         if not location_data:
-            # No results found case
+        # No results found case
             no_results = QLabel(f"No language/dialect results found for '{query}'")
             no_results.setStyleSheet("font-size: 16px; color: #34495e;")
             search_layout.addWidget(no_results)
             self.search_scroll_container.show()
             return
 
-        province_name = self.format_location_name(location_data['province_name'])
-        coords = self.province_coords.get(province_name, [16.9083, 122.3941])
+        # Determine the correct coordinates based on location type
+        if location_data['location_type'] == 'municipality':
+            # For municipality results
+            municipality_name = location_data['municipality_name'].capitalize()
+            province_name = location_data['province_name'].capitalize()
+            
+            # Use municipality coordinates if available, otherwise use province marker coords
+            if municipality_name in self.muni_coords:
+                coords = self.muni_coords[municipality_name]
+                self.base_map(location=coords, zoom=10)
+                folium.Marker(coords, popup=municipality_name).add_to(self.map)
+            else:
+                # Fall back to province marker if municipality coords not available
+                self.province_marker(province_name)
+                coords = self.marker_coords[province_name]
+            
+            location_text = f"{municipality_name}, {province_name}"
+        else:
+            # For province results, use the province_marker method
+            province_name = location_data['province_name'].capitalize()
+            self.province_marker(province_name)
+            coords = self.marker_coords[province_name]
+            location_text = province_name
 
-        location_text = province_name
-        if location_data['municipality_name']:
-            location_text = f"{self.format_location_name(location_data['municipality_name'])}, {self.format_location_name(province_name)}"
+        # Save and refresh the map
+        self.map.save(MAP_PATH)
+        self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
 
+        # Display location information
         location_label = QLabel(f"Location: {location_text} ({coords[0]}, {coords[1]})")
         location_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e;")
         search_layout.addWidget(location_label)
