@@ -689,7 +689,7 @@ class CordiMap(QMainWindow):
         info_layout.setSpacing(10)
 
         # Location Label
-        self.location_category_label = QLabel("Location: ", self.info_panel)
+        self.location_category_label = QLabel("Location: 16.9083, 122.3941", self.info_panel)
         self.location_category_label.setStyleSheet("font-size: 13px; color: #34495e;")
         info_layout.addWidget(self.location_category_label)
 
@@ -707,7 +707,9 @@ class CordiMap(QMainWindow):
         info_layout.addWidget(self.main_category)
 
         # Main Category
-        self.main_category_description = QLabel("""Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos. Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.""", self.info_panel)
+        self.main_category_description = QLabel(""" \t \tThe Cordillera Administrative Region (CAR) was officially established on July 15, 1987, through Executive Order No. 220 signed by President Corazon Aquino. It is the only landlocked region in the Philippines, located in the north-central part of Luzon. CAR is composed of 6 provinces (Abra, Apayao, Benguet, Ifugao, Kalinga, and Mountain Province), 75 municipalities, 2 cities, and 1,178 barangays. Its regional center is Baguio City, a highly urbanized area famously known as the "Summer Capital of the Philippines" (Department of Trade and Industry, 2020). 
+                                                \n \t \tThe region occupies most of the Cordillera Central mountain range and is bordered by Ilocos Norte and Cagayan to the north, Pangasinan and Nueva Vizcaya to the south, the Cagayan Valley to the east, and the Ilocos Region to the west. It spans approximately 18,294 square kilometers and is often referred to as the “Watershed Cradle of North Luzon” due to its nine major rivers that supply vital irrigation and hydropower to surrounding areas (PhilAtlas, 2022).
+                                                \n \t \tThe Cordillera region is recognized for its remarkable linguistic diversity. Each province, and often each municipality, has its own language or dialect, shaped by the region’s mountainous geography and relative isolation of communities. However, Ilocano serves as a lingua franca, facilitating communication among the diverse groups. Additionally, the languages of the Cordillera belong to the northern Luzon subgroup of the Philippine languages, which are part of the Austronesian (Malayo-Polynesian) family. These languages are not only markers of ethnic identity but also reflect the region’s history and social structure (Britannica, 2025).""", self.info_panel)
         self.main_category_description.setStyleSheet("font-size: 13px; color: #7f8c8d;")
         self.main_category_description.setWordWrap(True)
         self.main_category_description.setAlignment(Qt.AlignJustify)
@@ -717,7 +719,7 @@ class CordiMap(QMainWindow):
         self.about_label = QLabel("About:", self.info_panel)
         self.about_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e; padding-top: 5px;")
         info_layout.addWidget(self.about_label)
-        self.about_description = QLabel("The Cordillera region is home to diverse indigenous communities and unique cultural heritage sites such as the Banaue Rice Terraces.", self.info_panel)
+        self.about_description = QLabel("TO DO: add description of the program", self.info_panel)
         self.about_description.setStyleSheet("font-size: 13px; font-family: Tahoma; color: #7f8c8d;")
         self.about_description.setWordWrap(True)
         self.about_description.setAlignment(Qt.AlignJustify)
@@ -745,9 +747,12 @@ class CordiMap(QMainWindow):
         self.references_label = QLabel("References:", self.info_panel)
         self.references_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e; padding-top: 5px;")
         info_layout.addWidget(self.references_label)
-        self.references_description = QLabel(
-            'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque venenatis auctor ultrices.', 
-            self.info_panel)
+        
+        self.references_description = QLabel("""PhilAtlas. (2022). Cordillera Administrative Region (CAR) Profile. https://www.philatlas.com/luzon/car.html
+            \nDepartment of Trade and Industry. (2020). CAR - Regional Profile. https://www.dti.gov.ph/regions/car/profile/
+            \nBritannica. (2025, April 4). Igorot | Cordillera, Philippines, Indigenous. https://www.britannica.com/topic/Igorot
+            """, self.info_panel
+        )
         self.references_description.setStyleSheet("font-size: 13px; color: #7f8c8d;")
         self.references_description.setWordWrap(True)
         info_layout.addWidget(self.references_description)
