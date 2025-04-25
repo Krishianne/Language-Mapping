@@ -484,12 +484,13 @@ class CordiMap(QMainWindow):
             self.search_scroll_container.show()
             return
 
-        # Location Label
-        location_text = location_data['province_name'].capitalize()
+        province_name = self.format_location_name(location_data['province_name'])
+        coords = self.province_coords.get(province_name, [16.9083, 122.3941])
+
+        location_text = province_name
         if location_data['municipality_name']:
-            location_text = f"{location_data['municipality_name'].capitalize()}, {location_data['province_name'].capitalize()}"
-        
-        coords = self.get_location(location_text)
+            location_text = f"{self.format_location_name(location_data['municipality_name'])}, {self.format_location_name(province_name)}"
+
         location_label = QLabel(f"Location: {location_text} ({coords[0]}, {coords[1]})")
         location_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e;")
         search_layout.addWidget(location_label)
@@ -552,9 +553,9 @@ class CordiMap(QMainWindow):
                     AND p.province_name != %s
                     ORDER BY pl.percentage_value DESC
                     LIMIT 5;
-                """, (language_id, location_data['province_name'].capitalize()))
+                """, (language_id, self.format_location_name(location_data['province_name'])))
                 results = self.cur.fetchall()
-                places = [result[0].capitalize() for result in results]
+                places = [self.format_location_name(result[0]) for result in results]
             else:
                 # Get other municipalities in same province with this language
                 self.cur.execute("""
@@ -567,9 +568,9 @@ class CordiMap(QMainWindow):
                     AND m.municipality_name != %s
                     ORDER BY ml.percentage_value DESC
                     LIMIT 5;
-                """, (language_id, location_data['province_name'].capitalize(), location_data['municipality_name'].capitalize()))
+                """, (language_id, self.format_location_name(location_data['province_name']), self.format_location_name(location_data['municipality_name'])))
                 results = self.cur.fetchall()
-                places = [f"{result[0].capitalize()}, {location_data['province_name'].capitalize()}" for result in results]
+                places = [f"{self.format_location_name(result[0])}, {self.format_location_name(location_data['province_name'])}" for result in results]
 
             if not places:
                 return "No other places found with this language."
@@ -840,7 +841,7 @@ class CordiMap(QMainWindow):
             """ 
             self.cur.execute(query, (province,))
             rows = self.cur.fetchall()
-            return [row[0].title() for row in rows]
+            return [self.format_location_name(row[0]).title() for row in rows]
         except Exception as e:
             print(f"SQL error fetching municipalities: {e}")
         return []
@@ -989,7 +990,9 @@ class CordiMap(QMainWindow):
         except Exception as e:
             print(f"Error fetching location with highest percentage: {e}")
             return None
-          
+    def format_location_name(self, name):
+        return " ".join(word.capitalize() for word in name.strip().split())
+      
     def close(self):
         """Close the database connection."""
         self.cur.close()
