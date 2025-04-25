@@ -726,7 +726,7 @@ class CordiMap(QMainWindow):
         info_layout.addWidget(self.about_description)
 
         # Team
-        self.team_label = QLabel("Team:", self.info_panel)
+        self.team_label = QLabel("Team: B - Los Paolo Hermanos", self.info_panel)
         self.team_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e; padding-top: 5px;")
         info_layout.addWidget(self.team_label)
         self.team_description = QLabel(
