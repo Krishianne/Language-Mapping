@@ -148,7 +148,7 @@ class CordiMap(QMainWindow):
         search_layout.setSpacing(5)
 
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Type here...")
+        self.search_bar.setPlaceholderText("Search for languages...")
         self.search_bar.setFixedHeight(30)
         self.search_bar.setStyleSheet("padding: 5px; font-size: 12px; border: none;")
 
@@ -599,25 +599,31 @@ class CordiMap(QMainWindow):
             # If a municipality is provided, adjust the query to filter by municipality as well
             if municipality:
                 query = """
-                    SELECT ld.language_name, ml.percentage_value
-                    FROM municipalities m
-                    JOIN municipality_languages ml ON m.municipality_id = ml.municipality_id
+                    SELECT 
+                        ld.language_name, 
+                        ml.percentage_value
+                    FROM municipality_languages ml
                     JOIN languages_dialects ld ON ml.language_id = ld.language_id
+                    JOIN municipalities m ON ml.municipality_id = m.municipality_id
+                    JOIN provinces p ON m.province_id = p.province_id
                     WHERE LOWER(m.municipality_name) = LOWER(%s)
-                    AND LOWER(m.province_id) = (SELECT province_id FROM provinces WHERE LOWER(province_name) = LOWER(%s))
-                    ORDER BY ml.percentage_value DESC;
+                    AND LOWER(p.province_name) = LOWER(%s)
+                    ORDER BY ml.percentage_value DESC
+                    LIMIT 3;
                 """
                 self.cur.execute(query, (municipality, province))
             else:
                 # Default query to fetch language information for the entire province
                 query = """
-                    SELECT m.municipality_name, ld.language_name, ml.percentage_value
-                    FROM municipalities m
-                    JOIN municipality_languages ml ON m.municipality_id = ml.municipality_id
-                    JOIN languages_dialects ld ON ml.language_id = ld.language_id
-                    JOIN provinces p ON m.province_id = p.province_id
+                    SELECT 
+                        ld.language_name, 
+                        pl.percentage_value
+                    FROM province_languages pl
+                    JOIN languages_dialects ld ON pl.language_id = ld.language_id
+                    JOIN provinces p ON pl.province_id = p.province_id
                     WHERE LOWER(p.province_name) = LOWER(%s)
-                    ORDER BY ml.percentage_value DESC;
+                    ORDER BY pl.percentage_value DESC
+                    LIMIT 3;
                 """
                 self.cur.execute(query, (province,))
 
@@ -636,16 +642,15 @@ class CordiMap(QMainWindow):
                         table_widget.setItem(row_index, 0, QTableWidgetItem(language))
                         table_widget.setItem(row_index, 1, QTableWidgetItem(f"{percentage}%"))
                 else:
-                    # For the entire province, show municipality, language name, and percentage
-                    table_widget.setColumnCount(3)
-                    table_widget.setHorizontalHeaderLabels(['Municipality', 'Language Name', 'Percentage'])
+                    # For the entire province, language name, and percentage
+                    table_widget.setColumnCount(2)
+                    table_widget.setHorizontalHeaderLabels(['Language Name', 'Percentage'])
                     table_widget.setRowCount(len(rows))
                     
                     for row_index, row in enumerate(rows):
-                        municipality_name, language, percentage = row
-                        table_widget.setItem(row_index, 0, QTableWidgetItem(municipality_name))
-                        table_widget.setItem(row_index, 1, QTableWidgetItem(language))
-                        table_widget.setItem(row_index, 2, QTableWidgetItem(f"{percentage}%"))
+                        language, percentage = row
+                        table_widget.setItem(row_index, 0, QTableWidgetItem(language))
+                        table_widget.setItem(row_index, 1, QTableWidgetItem(f"{percentage}%"))
             else:
                 # If no data is found, display a message
                 table_widget.setRowCount(1)
@@ -701,8 +706,6 @@ class CordiMap(QMainWindow):
                 info += f"<b>Province Info:</b> {province_info[0]}<br>"
             if municipality_info:
                 info += f"<b>Municipality Info:</b> {municipality_info[0]}<br>"
-
-            # Optionally, you can add more info (languages, percentages, etc.) here.
             
             return info or "No information available."
 
@@ -734,14 +737,27 @@ class CordiMap(QMainWindow):
         try:
             # Query to fetch language phrases and their English equivalents for the selected municipality
             query = """
-                SELECT ld.language_name, p.language_phrase, p.english_phrase
+                WITH top_languages AS (
+                    SELECT 
+                        ld.language_id,
+                        ld.language_name, 
+                        ml.percentage_value
+                    FROM municipality_languages ml
+                    JOIN languages_dialects ld ON ml.language_id = ld.language_id
+                    JOIN municipalities m ON ml.municipality_id = m.municipality_id
+                    JOIN provinces p ON m.province_id = p.province_id
+                    WHERE LOWER(m.municipality_name) = LOWER(%s)
+                    AND LOWER(p.province_name) = LOWER(%s)
+                    ORDER BY ml.percentage_value DESC
+                    LIMIT 3
+                )
+                SELECT 
+                    tl.language_name, 
+                    p.language_phrase, 
+                    p.english_phrase
                 FROM phrases p
-                JOIN languages_dialects ld ON p.language_id = ld.language_id
-                JOIN municipality_languages ml ON ml.language_id = ld.language_id
-                JOIN municipalities m ON m.municipality_id = ml.municipality_id
-                WHERE LOWER(m.municipality_name) = LOWER(%s)
-                AND LOWER(m.province_id) = (SELECT province_id FROM provinces WHERE LOWER(province_name) = LOWER(%s))
-                ORDER BY ld.language_name;
+                JOIN top_languages tl ON p.language_id = tl.language_id
+                ORDER BY tl.language_name;
             """
             self.cur.execute(query, (municipality, province))
             rows = self.cur.fetchall()
