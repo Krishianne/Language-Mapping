@@ -4,6 +4,8 @@ import folium
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtCore import QStringListModel
+from PyQt5.QtWidgets import QCompleter
 from PyQt5.QtGui import QPixmap, QFont
 from db import connect
 
@@ -148,9 +150,18 @@ class CordiMap(QMainWindow):
         search_layout.setSpacing(5)
 
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search for languages...")
+        self.search_bar.setPlaceholderText("Search for languages/dialects...")
         self.search_bar.setFixedHeight(30)
         self.search_bar.setStyleSheet("padding: 5px; font-size: 12px; border: none;")
+
+        # Add completer for suggestions
+        self.completer = QCompleter()
+        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.completer.setFilterMode(Qt.MatchContains)
+        self.search_bar.setCompleter(self.completer)
+
+        # Connect text changed signal to update suggestions
+        self.search_bar.textChanged.connect(self.update_suggestions)
 
         self.search_btn = QPushButton("SEARCH")
         self.search_btn.setFixedSize(80, 30)
@@ -161,6 +172,8 @@ class CordiMap(QMainWindow):
 
         self.municipalities.currentIndexChanged.connect(self.selected_province_municipality)
         self.search_btn.clicked.connect(self.search_loc)
+        # Add return pressed event
+        self.search_bar.returnPressed.connect(self.search_loc)
 
         self.search_panel.setLayout(search_layout)
 
@@ -352,7 +365,7 @@ class CordiMap(QMainWindow):
             location_text = f"{province} - {municipality} ({coords[0]}, {coords[1]})"
 
         self.dynamic_location = QLabel(f"Location: {location_text}", self.dynamic_info_panel)
-        self.dynamic_location.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e;")
+        self.dynamic_location.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e; text-transform: none;")
         dynamic_info_layout.addWidget(self.dynamic_location)
 
         separator_line = QFrame(self.dynamic_info_panel)
@@ -406,45 +419,49 @@ class CordiMap(QMainWindow):
         try:
             search_query = self.search_bar.text().strip()
             if not search_query:
-                print("Search query is empty.")  # Optional: Show a warning
-                return  # Exit if no input
+                QMessageBox.information(self, "Search", "Please enter a language to search.")
+                return
 
-            # Ensure the map exists (create if missing)
-            if not hasattr(self, 'map') or not self.map:
-                self.map = folium.Map(location=[12.8797, 121.7740], zoom_start=6)  # Default: Philippines
-
-            # Add a marker for the search query (replace with real coordinates)
-            folium.Marker(
-                location=[17.6, 121.7],  # Example: Apayao coordinates
-                popup=f"Search: {search_query}"
-            ).add_to(self.map)
-
-            # Save and display the map
-            self.map.save(MAP_PATH)
-            self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
-
-            # Hide panels safely (check existence + visibility)
-            for panel_name in ["scroll_container", "dynamic_scroll_container"]:
+            # Hide other panels if visible
+            for panel_name in ["scroll_container", "dynamic_scroll_container", "province_scroll_container"]:
                 if hasattr(self, panel_name):
                     panel = getattr(self, panel_name)
                     if panel.isVisible():
                         panel.hide()
 
-            # Show search results
-            self.search_scroll_panel(search_query)
+            # Step 1: Get language_id
+            language_id = self.get_language_id(search_query)
+            if not language_id:
+                self.search_scroll_panel(search_query, None)
+                return
+
+            # Step 2: Get most relevant location
+            location_result = self.get_highest_percentage_location(language_id)
+            if location_result:
+                location_type, province_name, municipality_name, percentage = location_result
+                self.search_scroll_panel(search_query, {
+                    'language_id': language_id,
+                    'location_type': location_type,
+                    'province_name': province_name,
+                    'municipality_name': municipality_name,
+                    'percentage': percentage
+                })
+            else:
+                self.search_scroll_panel(search_query, None)
 
         except Exception as e:
-            print(f"Error in search_loc(): {e}")  # Log the error
-            # Optional: Show a user-friendly warning (e.g., QMessageBox)
+            print(f"Error in search_loc(): {e}")
             QMessageBox.warning(self, "Search Error", f"Failed to process search: {e}")
 
-    # Search Panel
-    def search_scroll_panel(self, query):
+    def search_scroll_panel(self, query, location_data):
+        if hasattr(self, 'search_scroll_container'):
+            self.search_scroll_container.deleteLater()
+
         self.search_scroll_container = QScrollArea(self)
         self.search_scroll_container.setGeometry(950, 150, 490, 600)
         self.search_scroll_container.setWidgetResizable(True)
         self.search_scroll_container.setStyleSheet("""
-            border: none;
+            border: 2px solid #B4B6C4;
             border-radius: 8px;
             background-color: #f2efe9;
         """)
@@ -457,10 +474,25 @@ class CordiMap(QMainWindow):
         # Layout for the search panel
         search_layout = QVBoxLayout(search_panel)
         search_layout.setContentsMargins(20, 20, 20, 20)
-        search_layout.setSpacing(2)
-        search_location = QLabel(f"Location: ?")
-        search_location.setStyleSheet("font-size: 16px; color: #34495e;")
-        search_layout.addWidget(search_location)
+        search_layout.setSpacing(10)
+
+        if not location_data:
+            # No results found case
+            no_results = QLabel(f"No language/dialect results found for '{query}'")
+            no_results.setStyleSheet("font-size: 16px; color: #34495e;")
+            search_layout.addWidget(no_results)
+            self.search_scroll_container.show()
+            return
+
+        # Location Label
+        location_text = location_data['province_name'].capitalize()
+        if location_data['municipality_name']:
+            location_text = f"{location_data['municipality_name'].capitalize()}, {location_data['province_name'].capitalize()}"
+        
+        coords = self.get_location(location_text)
+        location_label = QLabel(f"Location: {location_text} ({coords[0]}, {coords[1]})")
+        location_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e;")
+        search_layout.addWidget(location_label)
 
         # Separator
         separator_line = QFrame(search_panel)
@@ -471,9 +503,8 @@ class CordiMap(QMainWindow):
         search_layout.addWidget(separator_line)
 
         # Searched word
-        searched_word = QLabel(f"{query}", search_panel)
+        searched_word = QLabel(f"{query}")
         searched_word.setStyleSheet("font-size: 20px; font-weight: bold; color: #34495e;")
-        searched_word.setAlignment(Qt.AlignRight)
         search_layout.addWidget(searched_word)
 
         search_description = QLabel(f"Showing results for '{query}'.", search_panel)
@@ -481,25 +512,110 @@ class CordiMap(QMainWindow):
         search_description.setWordWrap(True)
         search_layout.addWidget(search_description)
 
-        search_similar_places = QLabel(f"Places with similar Language/Dialect")
-        search_similar_places.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e;")
-        search_layout.addWidget(search_similar_places)
+        # Places with same language
+        same_language_label = QLabel("Places with the Same Language/Dialect")
+        same_language_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e; padding-top: 10px;")
+        search_layout.addWidget(same_language_label)
 
-        search_places = QLabel(f"""
-            Lorem ipsum dolor sit amet
-            Lorem ipsum dolor sit amet
-            Lorem ipsum dolor sit amet
-        """)
-        search_places.setStyleSheet("font-size: 16px; color: #34495e;")
-        search_layout.addWidget(search_places)
+        # Get places with same language
+        same_language_places = self.get_same_language_places(location_data)
+        same_language_text = QLabel(same_language_places)
+        same_language_text.setStyleSheet("font-size: 13px; color: #7f8c8d;")
+        same_language_text.setWordWrap(True)
+        search_layout.addWidget(same_language_text)
 
-        common_phrases_translation = QLabel("Common Phrases Translation")
-        common_phrases_translation.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e;")
-        search_layout.addWidget(common_phrases_translation)
+        # Common Phrases Translation
+        phrases_label = QLabel("Common Phrases Translation")
+        phrases_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e; padding-top: 10px;")
+        search_layout.addWidget(phrases_label)
 
-        # Apply layout and show the panel
+        # Get common phrases table
+        phrases_table = self.get_common_phrases_table(location_data['language_id'])
+        search_layout.addWidget(phrases_table)
+
+        # Set layout and show
         search_panel.setLayout(search_layout)
-        self.search_scroll_container.show()        
+        self.search_scroll_container.show()
+
+    def get_same_language_places(self, location_data):
+        try:
+            language_id = location_data['language_id']
+            places = []
+
+            if location_data['location_type'] == 'province':
+                # Get other provinces with this language
+                self.cur.execute("""
+                    SELECT p.province_name
+                    FROM province_languages pl
+                    JOIN provinces p ON pl.province_id = p.province_id
+                    WHERE pl.language_id = %s
+                    AND p.province_name != %s
+                    ORDER BY pl.percentage_value DESC
+                    LIMIT 5;
+                """, (language_id, location_data['province_name'].capitalize()))
+                results = self.cur.fetchall()
+                places = [result[0].capitalize() for result in results]
+            else:
+                # Get other municipalities in same province with this language
+                self.cur.execute("""
+                    SELECT m.municipality_name
+                    FROM municipality_languages ml
+                    JOIN municipalities m ON ml.municipality_id = m.municipality_id
+                    JOIN provinces p ON m.province_id = p.province_id
+                    WHERE ml.language_id = %s
+                    AND p.province_name = %s
+                    AND m.municipality_name != %s
+                    ORDER BY ml.percentage_value DESC
+                    LIMIT 5;
+                """, (language_id, location_data['province_name'].capitalize(), location_data['municipality_name'].capitalize()))
+                results = self.cur.fetchall()
+                places = [f"{result[0].capitalize()}, {location_data['province_name'].capitalize()}" for result in results]
+
+            if not places:
+                return "No other places found with this language."
+            
+            return "\n".join(places)
+        except Exception as e:
+            print(f"Error getting same language places: {e}")
+            return "Error loading places with same language."
+
+    def get_common_phrases_table(self, language_id):
+        """Create a table widget for common phrases."""
+        table_widget = QTableWidget()
+        
+        try:
+            self.cur.execute("""
+                SELECT language_phrase, english_phrase
+                FROM phrases
+                WHERE language_id = %s
+                ORDER BY phrase_id
+                LIMIT 5;
+            """, (language_id,))
+            phrases = self.cur.fetchall()
+
+            if phrases:
+                table_widget.setColumnCount(2)
+                table_widget.setHorizontalHeaderLabels(['Language Phrase', 'English Translation'])
+                table_widget.setRowCount(len(phrases))
+                
+                for row_idx, (lang_phrase, eng_phrase) in enumerate(phrases):
+                    table_widget.setItem(row_idx, 0, QTableWidgetItem(lang_phrase))
+                    table_widget.setItem(row_idx, 1, QTableWidgetItem(eng_phrase))
+                
+                table_widget.horizontalHeader().setStretchLastSection(True)
+                table_widget.resizeColumnsToContents()
+            else:
+                table_widget.setRowCount(1)
+                table_widget.setColumnCount(1)
+                table_widget.setItem(0, 0, QTableWidgetItem("No common phrases found."))
+                
+        except Exception as e:
+            print(f"Error getting common phrases: {e}")
+            table_widget.setRowCount(1)
+            table_widget.setColumnCount(1)
+            table_widget.setItem(0, 0, QTableWidgetItem("Error loading phrases."))
+        
+        return table_widget
 
     def show_information_panel(self):
      # Information Panel
@@ -523,7 +639,7 @@ class CordiMap(QMainWindow):
         info_layout.setSpacing(10)
 
         # Location Label
-        self.location_category_label = QLabel("Location: 16.9083, 122.3941", self.info_panel)
+        self.location_category_label = QLabel("Location: ", self.info_panel)
         self.location_category_label.setStyleSheet("font-size: 13px; color: #34495e;")
         info_layout.addWidget(self.location_category_label)
 
@@ -724,7 +840,7 @@ class CordiMap(QMainWindow):
             """
             self.cur.execute(query, (province,))
             rows = self.cur.fetchall()
-            return [row[0] for row in rows]
+            return [row[0].title() for row in rows]
         except Exception as e:
             print(f"SQL error fetching municipalities: {e}")
         return []
@@ -792,6 +908,88 @@ class CordiMap(QMainWindow):
 
         return table_widget
 
+    def get_language_suggestions(self, query):
+        """Fetch language suggestions from the database based on user input."""
+        try:
+            query = f"%{query}%"
+            sql = """
+                SELECT language_name 
+                FROM languages_dialects 
+                WHERE LOWER(language_name) LIKE LOWER(%s)
+                LIMIT 10;
+            """
+            self.cur.execute(sql, (query,))
+            return [row[0] for row in self.cur.fetchall()]
+        except Exception as e:
+            print(f"Error fetching suggestions: {e}")
+            return []
+    
+    def update_suggestions(self):
+        """Update the suggestions as the user types."""
+        query = self.search_bar.text().strip()
+        if query:
+            suggestions = self.get_language_suggestions(query)
+            model = QStringListModel()
+            model.setStringList(suggestions)
+            self.completer.setModel(model)
+        else:
+            # Clear suggestions if search bar is empty
+            self.completer.setModel(QStringListModel())
+
+    def select_municipality_and_show_info(self, municipality):
+        """Select the municipality in the dropdown and show its information."""
+        municipality_index = self.municipalities.findText(municipality)
+        if municipality_index >= 0:
+            self.municipalities.setCurrentIndex(municipality_index)
+
+    def get_language_id(self, language_name):
+        try:
+            self.cur.execute("""
+                SELECT language_id FROM languages_dialects 
+                WHERE LOWER(language_name) = LOWER(%s) LIMIT 1;
+            """, (language_name,))
+            result = self.cur.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            print(f"Error fetching language ID: {e}")
+            return None
+
+    def get_highest_percentage_location(self, language_id):
+        try:
+            self.cur.execute("""
+                (SELECT 
+                    'province' as type,
+                    p.province_name as name,
+                    NULL as municipality_name,
+                    pl.percentage_value as percentage
+                FROM province_languages pl
+                JOIN provinces p ON pl.province_id = p.province_id
+                WHERE pl.language_id = %s
+                ORDER BY pl.percentage_value DESC
+                LIMIT 1)
+                
+                UNION ALL
+                
+                (SELECT 
+                    'municipality' as type,
+                    p.province_name as name,
+                    m.municipality_name,
+                    ml.percentage_value as percentage
+                FROM municipality_languages ml
+                JOIN municipalities m ON ml.municipality_id = m.municipality_id
+                JOIN provinces p ON m.province_id = p.province_id
+                WHERE ml.language_id = %s
+                ORDER BY ml.percentage_value DESC
+                LIMIT 1)
+                
+                ORDER BY percentage DESC
+                LIMIT 1;
+            """, (language_id, language_id))
+            return self.cur.fetchone()
+        except Exception as e:
+            print(f"Error fetching location with highest percentage: {e}")
+            return None
+          
     def close(self):
         """Close the database connection."""
         self.cur.close()
