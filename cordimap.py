@@ -9,13 +9,6 @@ from PyQt5.QtWidgets import QCompleter
 from PyQt5.QtGui import QPixmap, QFont
 from db import connect
 
-# map = folium.Map(location=[16.9083, 122.3941], zoom_start=8, scrollWheelZoom=False, doubleClickZoom=False)
-# # map = folium.Map(location=[16.9983, 122.3941], zoom_start=8,control_scale=False, scrollWheelZoom=False, zoomControl=False, doubleClickZoom=False)
-# # folium.Marker([16.8691, 121.2199], popup="Click me!").add_to(map)
-# # map.options['attributionControl'] = False
-
-# map.save("map.html")
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MAP_PATH = os.path.join(BASE_DIR, "map.html")
 LOGO_PATH = os.path.join(BASE_DIR, "cordilogo.png")
@@ -35,10 +28,13 @@ class CordiMap(QMainWindow):
             "Ifugao": [16.8167, 122.6205],
             "Kalinga": [17.1897, 122.6898],
             "Mountain Province": [17.0956, 122.5580]
+
+
         }
 
         self.muni_coords = {
-            "Calanasan": [18.2688, 121.0453],
+            #Apayao
+            "Calanasan (Bayag)": [18.2688, 121.0453],
             "Conner": [17.8141, 121.3216],
             "Flora": [18.2287, 121.4218],
             "Luna": [18.3444, 121.3723],
@@ -76,11 +72,10 @@ class CordiMap(QMainWindow):
     def base_map(self, location=None, zoom=8):
         if location is None:
             location = [16.9083, 122.3941]
-        self.map = folium.Map(location=location, zoom_start=zoom, scrollWheelZoom=False, doubleClickZoom=False)
+        self.map = folium.Map(location=location, zoom_start=zoom, scrollWheelZoom=False, doubleClickZoom=False, zoomControl=False)
         self.map.save(MAP_PATH) 
 
     def header_panel(self):
-        # --- Province Panel ---
         self.province_panel = QWidget(self)
         self.province_panel.setGeometry(950, 50, 240, 40)
         self.province_panel.setStyleSheet("background-color: #f2efe9; border-radius: 5px; border: 2px solid #B4B6C4;")
@@ -154,13 +149,11 @@ class CordiMap(QMainWindow):
         self.search_bar.setFixedHeight(30)
         self.search_bar.setStyleSheet("padding: 5px; font-size: 12px; border: none;")
 
-        # Add completer for suggestions
         self.completer = QCompleter()
         self.completer.setCaseSensitivity(Qt.CaseInsensitive)
         self.completer.setFilterMode(Qt.MatchContains)
         self.search_bar.setCompleter(self.completer)
 
-        # Connect text changed signal to update suggestions
         self.search_bar.textChanged.connect(self.update_suggestions)
 
         self.search_btn = QPushButton("SEARCH")
@@ -172,12 +165,10 @@ class CordiMap(QMainWindow):
 
         self.municipalities.currentIndexChanged.connect(self.selected_province_municipality)
         self.search_btn.clicked.connect(self.search_loc)
-        # Add return pressed event
         self.search_bar.returnPressed.connect(self.search_loc)
 
         self.search_panel.setLayout(search_layout)
 
-    # Municipality disable/enable
     def on_province_selected(self, index):
         selected_province = self.provinces.currentText()
         self.municipalities.clear()
@@ -189,16 +180,16 @@ class CordiMap(QMainWindow):
                 self.province_scroll_container.hide()
         else:
             self.load_municipalities(selected_province)
-            self.clear_province_btn.show()  # Make sure the clear button is visible
-            self.municipalities.setEnabled(True)  # Enable the dropdown
+            self.clear_province_btn.show()  
+            self.municipalities.setEnabled(True)  
             if hasattr(self, 'province_scroll_container'):
-                self.province_scroll_container.show()  # Show the scroll container
+                self.province_scroll_container.show() 
 
     def load_municipalities(self, province):
         self.province_marker(province)
 
         municipalities = self.get_municipalities(province)
-        print(f"Municipalities for {province}: {municipalities}")  # Debugging line
+        print(f"Municipalities for {province}: {municipalities}") 
 
         self.municipalities.addItem('Select Municipality')
         self.municipalities.setItemData(0, 0, Qt.UserRole - 1)
@@ -215,29 +206,23 @@ class CordiMap(QMainWindow):
         try:
             print("Clear button pressed")
             
-            # Reset the province dropdown
             self.provinces.setCurrentIndex(0)
             print("Province dropdown reset")
             
-            # Call the base map function to reset the map
             self.base_map()
             print("Base map reset")
             
-            # Reset the browser's URL to the default map path
             self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
             print("Browser URL reset")
             
-            # Clear the municipalities dropdown
             self.municipalities.clear()
             self.municipalities.addItem("Select Municipality")
             self.municipalities.setEnabled(False)
             print("Municipalities dropdown reset")
             
-            # Hide the "Clear Province" button
             self.clear_province_btn.hide()
             print("Clear province button hidden")
 
-            # Optionally show the information panel (if it's hidden by default)
             if hasattr(self, 'show_information_panel'):
                 self.show_information_panel()
                 print("Information panel shown")
@@ -263,9 +248,6 @@ class CordiMap(QMainWindow):
     def remove_province_marker(self, province):
         if province in self.marker_coords:
             self.base_map(location=self.marker_coords[province], zoom=8) 
-        # coords = self.marker_coords[province]
-        # folium.Marker(coords, popup=province).add_to(self.map)
-        # self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
 
     def muni_marker(self, municipality):
         coords = self.muni_coords.get(municipality)
@@ -315,14 +297,14 @@ class CordiMap(QMainWindow):
         # Location Label
         coords = self.get_location(province)
         self.province_location_label = QLabel(f"Location: {province} ({coords[0]}, {coords[1]})", self.info_panel)
-        self.province_location_label.setStyleSheet("font-size: 13px; color: #34495e;")
+        self.province_location_label.setStyleSheet("font-size: 13px; color: #34495e; border: none;")
         layout.addWidget(self.province_location_label)
 
         # Separator
         separator_line = QFrame(self.info_panel)
         separator_line.setFrameShape(QFrame.HLine)
         separator_line.setFrameShadow(QFrame.Sunken)
-        separator_line.setStyleSheet("background-color: #000; margin-top: 2px; margin-bottom: 2px;")
+        separator_line.setStyleSheet("background-color: #000; margin-top: 2px; margin-bottom: 2px; border: none;")
         layout.addWidget(separator_line)
 
         title = QLabel(f"{province} Information")
@@ -330,13 +312,13 @@ class CordiMap(QMainWindow):
         layout.addWidget(title)
 
         description = QLabel(f"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ac scelerisque ex. Morbi luctus laoreet lacus ut congue. Aenean iaculis sagittis tellus viverra dignissim. Donec pellentesque lacinia vestibulum. Quisque id suscipit enim. Praesent nec nisl felis. Fusce rhoncus et risus non molestie. ")
-        description.setStyleSheet("font-size: 13px; color: #7f8c8d;")
+        description.setStyleSheet("font-size: 13px; color: #7f8c8d; border: none;")
         description.setWordWrap(True)
         description.setAlignment(Qt.AlignJustify)
         layout.addWidget(description)
 
         provinces = QLabel(f"Languages/Dialect Spoken")
-        provinces.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        provinces.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50; border: none;")
         layout.addWidget(provinces)
 
         provinces_LorD_spoken = QLabel(f"""
@@ -344,12 +326,12 @@ class CordiMap(QMainWindow):
             Lorem ipsum dolor sit amet
             Lorem ipsum dolor sit amet
             """)
-        provinces_LorD_spoken.setStyleSheet("font-size: 13px; color: #7f8c8d;")
+        provinces_LorD_spoken.setStyleSheet("font-size: 13px; color: #7f8c8d; border: none;")
         provinces_LorD_spoken.setWordWrap(True)
         layout.addWidget(provinces_LorD_spoken)
 
         provinces_common_phrases = QLabel("Common Phrases")
-        provinces_common_phrases.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        provinces_common_phrases.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50; border: none;")
         layout.addWidget(provinces_common_phrases)
 
         provinces_cp = QLabel(f""""
@@ -357,7 +339,7 @@ class CordiMap(QMainWindow):
             Lorem ipsum dolor sit amet
             Lorem ipsum dolor sit amet
             """)
-        provinces_cp.setStyleSheet("font-size: 14px; color: #7f8c8d")
+        provinces_cp.setStyleSheet("font-size: 14px; color: #7f8c8d border: none;")
         provinces_cp.setWordWrap(True)
         layout.addWidget(provinces_cp)
 
@@ -366,7 +348,6 @@ class CordiMap(QMainWindow):
         self.province_scroll_container.show()
 
     # Province-Municipality Panel
-    # TODO
     def create_dynamic_info_panel(self, province, municipality):
         self.dynamic_scroll_container = QScrollArea(self)
         self.dynamic_scroll_container.setGeometry(950, 150, 490, 600)
@@ -388,45 +369,39 @@ class CordiMap(QMainWindow):
         coords = self.get_location(province)
         location_text = f"{province} ({coords[0]}, {coords[1]})"
 
-        if municipality:  # Only add dash if municipality is provided
+        if municipality: 
             location_text = f"{province} - {municipality} ({coords[0]}, {coords[1]})"
 
         self.dynamic_location = QLabel(f"Location: {location_text}", self.dynamic_info_panel)
-        self.dynamic_location.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e; text-transform: none;")
+        self.dynamic_location.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e; text-transform: none; border: none;")
         dynamic_info_layout.addWidget(self.dynamic_location)
 
         separator_line = QFrame(self.dynamic_info_panel)
         separator_line.setFrameShape(QFrame.HLine)
         separator_line.setFrameShadow(QFrame.Sunken)
-        separator_line.setStyleSheet("background-color: #000; margin-top: 2px; margin-bottom: 2px;")
+        separator_line.setStyleSheet("background-color: #000; margin-top: 2px; margin-bottom: 2px; border: none;")
         separator_line.setFixedHeight(1)
         dynamic_info_layout.addWidget(separator_line)
 
-        # Fetch dynamic info from the database
         dynamic_info = self.get_dynamic_info(province, municipality)
 
-        # Format location string
         if municipality:
             location_text = f"{municipality}, {province}"
         else:
             location_text = f"{province}"
 
-        # Combine title and info into one QLabel
-        combined_text = f"<b style='font-size:16pt;'>{location_text} Information</b><br><span style='font-size:11pt; color:#7f8c8d;'>{dynamic_info}</span>"
+        combined_text = f"<b style='font-size:16pt;'>{location_text} Information</b><br><span style='font-size:11pt; color:#7f8c8d; '>{dynamic_info}</span>"
 
-        # Set the combined QLabel
         self.dynamic_info_label = QLabel(combined_text, self.dynamic_info_panel)
-        self.dynamic_info_label.setStyleSheet("font-size: 13px; color: #34495e;")
+        self.dynamic_info_label.setStyleSheet("font-size: 13px; color: #34495e; border: none;")
         self.dynamic_info_label.setWordWrap(True)
         self.dynamic_info_label.setTextFormat(Qt.RichText)  
         dynamic_info_layout.addWidget(self.dynamic_info_label)
 
         dynamic_description = self.get_dynamic_description(province, municipality)
 
-        # Add the table widget directly to the layout
         dynamic_info_layout.addWidget(dynamic_description)
 
-        # Only add language-related details if municipality is provided
         if municipality:
             self.dynamic_language_info_widget = self.get_dynamic_municipality(province, municipality)
             dynamic_info_layout.addWidget(self.dynamic_language_info_widget)
@@ -449,20 +424,17 @@ class CordiMap(QMainWindow):
                 QMessageBox.information(self, "Search", "Please enter a language to search.")
                 return
 
-            # Hide other panels if visible
             for panel_name in ["scroll_container", "dynamic_scroll_container", "province_scroll_container"]:
                 if hasattr(self, panel_name):
                     panel = getattr(self, panel_name)
                     if panel.isVisible():
                         panel.hide()
 
-            # Step 1: Get language_id
             language_id = self.get_language_id(search_query)
             if not language_id:
                 self.search_scroll_panel(search_query, None)
                 return
 
-            # Step 2: Get most relevant location
             location_result = self.get_highest_percentage_location(language_id)
             if location_result:
                 location_type, province_name, municipality_name, percentage = location_result
@@ -493,55 +465,45 @@ class CordiMap(QMainWindow):
             background-color: #f2efe9;
         """)
 
-        # Container widget inside scroll
         search_panel = QWidget()
         search_panel.setStyleSheet("background-color: #f2efe9; border-radius: 8px;")
         self.search_scroll_container.setWidget(search_panel)
 
-        # Layout for the search panel
         search_layout = QVBoxLayout(search_panel)
         search_layout.setContentsMargins(20, 20, 20, 20)
         search_layout.setSpacing(10)
 
         if not location_data:
-        # No results found case
             no_results = QLabel(f"No language/dialect results found for '{query}'")
-            no_results.setStyleSheet("font-size: 16px; color: #34495e;")
+            no_results.setStyleSheet("font-size: 16px; color: #34495e; border: none;")
             search_layout.addWidget(no_results)
             self.search_scroll_container.show()
             return
 
-        # Determine the correct coordinates based on location type
         if location_data['location_type'] == 'municipality':
-            # For municipality results
             municipality_name = location_data['municipality_name'].capitalize()
             province_name = location_data['province_name'].capitalize()
             
-            # Use municipality coordinates if available, otherwise use province marker coords
             if municipality_name in self.muni_coords:
                 coords = self.muni_coords[municipality_name]
                 self.base_map(location=coords, zoom=10)
                 folium.Marker(coords, popup=municipality_name).add_to(self.map)
             else:
-                # Fall back to province marker if municipality coords not available
                 self.province_marker(province_name)
                 coords = self.marker_coords[province_name]
             
             location_text = f"{municipality_name}, {province_name}"
         else:
-            # For province results, use the province_marker method
             province_name = location_data['province_name'].capitalize()
             self.province_marker(province_name)
             coords = self.marker_coords[province_name]
             location_text = province_name
 
-        # Save and refresh the map
         self.map.save(MAP_PATH)
         self.browser.setUrl(QUrl.fromLocalFile(MAP_PATH))
 
-        # Display location information
         location_label = QLabel(f"Location: {location_text} ({coords[0]}, {coords[1]})")
-        location_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e;")
+        location_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e; border: none;")
         search_layout.addWidget(location_label)
 
         # Separator
@@ -564,19 +526,19 @@ class CordiMap(QMainWindow):
 
         # Places with same language
         same_language_label = QLabel("Places with the Same Language/Dialect")
-        same_language_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e; padding-top: 10px;")
+        same_language_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e; padding-top: 10px; border: none;")
         search_layout.addWidget(same_language_label)
 
         # Get places with same language
         same_language_places = self.get_same_language_places(location_data)
         same_language_text = QLabel(same_language_places)
-        same_language_text.setStyleSheet("font-size: 13px; color: #7f8c8d;")
+        same_language_text.setStyleSheet("font-size: 13px; color: #7f8c8d; border: none;")
         same_language_text.setWordWrap(True)
         search_layout.addWidget(same_language_text)
 
         # Common Phrases Translation
         phrases_label = QLabel("Common Phrases Translation")
-        phrases_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #34495e; padding-top: 10px;")
+        phrases_label.setStyleSheet("font-size: 12px; font-weight: bold; color: #34495e; padding-top: 10px; border: none;")
         search_layout.addWidget(phrases_label)
 
         # Get common phrases table
@@ -593,7 +555,6 @@ class CordiMap(QMainWindow):
             places = []
 
             if location_data['location_type'] == 'province':
-                # Get other provinces with this language
                 self.cur.execute("""
                     SELECT p.province_name
                     FROM province_languages pl
@@ -606,7 +567,6 @@ class CordiMap(QMainWindow):
                 results = self.cur.fetchall()
                 places = [self.format_location_name(result[0]) for result in results]
             else:
-                # Get other municipalities in same province with this language
                 self.cur.execute("""
                     SELECT m.municipality_name
                     FROM municipality_languages ml
@@ -632,7 +592,7 @@ class CordiMap(QMainWindow):
     def get_common_phrases_table(self, language_id):
         """Create a table widget for common phrases."""
         table_widget = QTableWidget()
-        
+        table_widget.setStyleSheet("font-size: 13px;")
         try:
             self.cur.execute("""
                 SELECT language_phrase, english_phrase
@@ -690,7 +650,7 @@ class CordiMap(QMainWindow):
 
         # Location Label
         self.location_category_label = QLabel("Location: 16.9083, 122.3941", self.info_panel)
-        self.location_category_label.setStyleSheet("font-size: 13px; color: #34495e;")
+        self.location_category_label.setStyleSheet("font-size: 13px; color: #34495e; border: none;")
         info_layout.addWidget(self.location_category_label)
 
         # Separator
@@ -703,7 +663,7 @@ class CordiMap(QMainWindow):
 
         # Title
         self.main_category = QLabel("Cordillera Administrative Region", self.info_panel)
-        self.main_category.setStyleSheet("font-size: 22px; font-weight: bold; color: #2c3e50;  padding-top: 10px;")
+        self.main_category.setStyleSheet("font-size: 22px; font-weight: bold; color: #2c3e50;  padding-top: 10px; border: none;")
         info_layout.addWidget(self.main_category)
 
         # Main Category
@@ -715,15 +675,15 @@ class CordiMap(QMainWindow):
         self.main_category_description.setAlignment(Qt.AlignJustify)
         info_layout.addWidget(self.main_category_description)
 
-        # About
-        self.about_label = QLabel("About:", self.info_panel)
-        self.about_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e; padding-top: 5px;")
-        info_layout.addWidget(self.about_label)
-        self.about_description = QLabel("TO DO: add description of the program", self.info_panel)
-        self.about_description.setStyleSheet("font-size: 13px; font-family: Tahoma; color: #7f8c8d;")
-        self.about_description.setWordWrap(True)
-        self.about_description.setAlignment(Qt.AlignJustify)
-        info_layout.addWidget(self.about_description)
+        # # About
+        # self.about_label = QLabel("About:", self.info_panel)
+        # self.about_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #34495e; padding-top: 5px;")
+        # info_layout.addWidget(self.about_label)
+        # self.about_description = QLabel("TO DO: add description of the program", self.info_panel)
+        # self.about_description.setStyleSheet("font-size: 13px; font-family: Tahoma; color: #7f8c8d;")
+        # self.about_description.setWordWrap(True)
+        # self.about_description.setAlignment(Qt.AlignJustify)
+        # info_layout.addWidget(self.about_description)
 
         # Team
         self.team_label = QLabel("Team: B - Los Paolo Hermanos", self.info_panel)
@@ -763,11 +723,9 @@ class CordiMap(QMainWindow):
 
     def get_dynamic_description(self, province, municipality=None):
         """Get description and details from the database for municipalities in the selected province."""
-        # Create a QTableWidget for displaying results
         table_widget = QTableWidget()
-
+        table_widget.setStyleSheet("font-size: 13px;")
         try:
-            # If a municipality is provided, adjust the query to filter by municipality as well
             if municipality:
                 query = """
                     SELECT 
@@ -784,7 +742,6 @@ class CordiMap(QMainWindow):
                 """
                 self.cur.execute(query, (municipality, province))
             else:
-                # Default query to fetch language information for the entire province
                 query = """
                     SELECT 
                         ld.language_name, 
@@ -801,9 +758,7 @@ class CordiMap(QMainWindow):
             rows = self.cur.fetchall()
 
             if rows:
-                # Set up the table format based on whether a municipality is selected or not
                 if municipality:
-                    # For selected municipality, show only language name and percentage
                     table_widget.setColumnCount(2)
                     table_widget.setHorizontalHeaderLabels(['Language Name', 'Percentage'])
                     table_widget.setRowCount(len(rows))
@@ -813,7 +768,6 @@ class CordiMap(QMainWindow):
                         table_widget.setItem(row_index, 0, QTableWidgetItem(language))
                         table_widget.setItem(row_index, 1, QTableWidgetItem(f"{percentage}%"))
                 else:
-                    # For the entire province, language name, and percentage
                     table_widget.setColumnCount(2)
                     table_widget.setHorizontalHeaderLabels(['Language Name', 'Percentage'])
                     table_widget.setRowCount(len(rows))
@@ -823,7 +777,6 @@ class CordiMap(QMainWindow):
                         table_widget.setItem(row_index, 0, QTableWidgetItem(language))
                         table_widget.setItem(row_index, 1, QTableWidgetItem(f"{percentage}%"))
             else:
-                # If no data is found, display a message
                 table_widget.setRowCount(1)
                 table_widget.setColumnCount(1)
                 table_widget.setHorizontalHeaderLabels(['No Information Available'])
@@ -831,7 +784,6 @@ class CordiMap(QMainWindow):
 
         except Exception as e:
             print(f"Database error: {e}")
-            # In case of error, show an error message
             table_widget.setRowCount(1)
             table_widget.setColumnCount(1)
             table_widget.setHorizontalHeaderLabels(['Error'])
@@ -844,12 +796,11 @@ class CordiMap(QMainWindow):
         Return the coordinates of the given province.
         If not found, return default coordinates.
         """
-        return self.province_coords.get(province, [16.9083, 122.3941])  # Default Cordillera region center
+        return self.province_coords.get(province, [16.9083, 122.3941])  
 
     def get_dynamic_info(self, province, municipality):
         """Fetch dynamic information for the given province and municipality."""
         try:
-            # Query to get the province information
             query_province = """
                 SELECT information
                 FROM provinces
@@ -859,7 +810,6 @@ class CordiMap(QMainWindow):
             self.cur.execute(query_province, (province,))
             province_info = self.cur.fetchone()
 
-            # Query to get the municipality information
             query_municipality = """
                 SELECT information
                 FROM municipalities
@@ -871,7 +821,6 @@ class CordiMap(QMainWindow):
             self.cur.execute(query_municipality, (municipality, province))
             municipality_info = self.cur.fetchone()
 
-            # Combine both information if available
             info = ""
             if province_info:
                 info += f"<b>Province Info:</b> {province_info[0]}<br>"
@@ -902,11 +851,10 @@ class CordiMap(QMainWindow):
     
     def get_dynamic_municipality(self, province, municipality):
         """Create a table widget to display the language phrases and English phrases for the selected municipality."""
-        # Create a new QTableWidget
         table_widget = QTableWidget()
+        table_widget.setStyleSheet("font-size: 13px;")
 
         try:
-            # Query to fetch language phrases and their English equivalents for the selected municipality
             query = """
                 WITH top_languages AS (
                     SELECT 
@@ -934,11 +882,9 @@ class CordiMap(QMainWindow):
             rows = self.cur.fetchall()
 
             if rows:
-                # Set the number of columns based on the result
-                table_widget.setColumnCount(3)  # Language Name | Language Phrase | English Phrase
+                table_widget.setColumnCount(3) 
                 table_widget.setHorizontalHeaderLabels(['Language Name', 'Language Phrase', 'English Phrase'])
 
-                # Set the number of rows based on the fetched data
                 table_widget.setRowCount(len(rows))
 
                 for row_index, row in enumerate(rows):
@@ -947,7 +893,6 @@ class CordiMap(QMainWindow):
                     table_widget.setItem(row_index, 1, QTableWidgetItem(phrase))
                     table_widget.setItem(row_index, 2, QTableWidgetItem(english_phrase))
             else:
-                # If no phrases are found, show a message indicating no data
                 table_widget.setRowCount(1)
                 table_widget.setColumnCount(1)
                 table_widget.setHorizontalHeaderLabels(['No Information Available'])
@@ -955,7 +900,6 @@ class CordiMap(QMainWindow):
 
         except Exception as e:
             print(f"Error fetching phrases: {e}")
-            # In case of error, show an error message
             table_widget.setRowCount(1)
             table_widget.setColumnCount(1)
             table_widget.setHorizontalHeaderLabels(['Error'])
@@ -988,7 +932,6 @@ class CordiMap(QMainWindow):
             model.setStringList(suggestions)
             self.completer.setModel(model)
         else:
-            # Clear suggestions if search bar is empty
             self.completer.setModel(QStringListModel())
 
     def select_municipality_and_show_info(self, municipality):
@@ -1058,4 +1001,7 @@ cordimap.setFont(font)
 window = CordiMap()
 window.show()
 
-sys.exit(cordimap.exec_())
+sys.exit(cordimap.exec())
+
+
+#Abra 
